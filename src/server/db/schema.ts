@@ -35,9 +35,7 @@ export const leads = createTable("leads", {
 	agePassed: integer("agePassed", { mode: "boolean" }).default(false),
 	optIn: integer("optIn", { mode: "boolean" }).default(false),
 	terms: integer("terms", { mode: "boolean" }).default(false),
-	location: text("location", {
-		enum: ["location 1", "location 2", "location 3"],
-	}).notNull(),
+	play: integer("play").notNull(),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.default(sql`(unixepoch())`)
 		.notNull(),
@@ -79,6 +77,7 @@ export const leadFiles = createTable("lead_files", {
 		.primaryKey()
 		.$defaultFn(() => ulid()),
 	leadId: text("lead_id").notNull(),
+	play: integer("play").notNull(),
 	fileName: text("file_name", { length: 255 }).notNull(),
 	fileSize: integer("file_size").notNull(),
 	mimeType: text("mime_type", { length: 100 }).notNull(),

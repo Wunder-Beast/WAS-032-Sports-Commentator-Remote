@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
@@ -16,12 +17,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { insertLeadSchema } from "@/server/db/schema";
 import { api } from "@/trpc/react";
+import PrivacyModal from "./privacyModal";
 
-export function LeadForm() {
+interface LeadFormProps {
+	agePassed: boolean;
+	play: number;
+}
+
+export function LeadForm({ agePassed, play }: LeadFormProps) {
 	const utils = api.useUtils();
+	const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
 	const createLead = api.lead.create.useMutation({
 		onMutate: () => {
@@ -55,12 +62,17 @@ export function LeadForm() {
 			lastName: "",
 			email: "",
 			phone: "",
-			agePassed: false,
+			agePassed,
 			optIn: false,
 			terms: false,
-			location: "location 1",
+			play,
 		},
 	});
+
+	useEffect(() => {
+		form.setValue("agePassed", agePassed);
+		form.setValue("play", play);
+	}, [agePassed, play, form]);
 
 	function onSubmit(values: z.infer<typeof insertLeadSchema>) {
 		// force underage phone numbers to not be collected
@@ -73,46 +85,26 @@ export function LeadForm() {
 
 	const isSubmittable = form.formState.isValid;
 
+	const showModal = () => {
+		console.log("Opening privacy modal");
+		setShowPrivacyModal(true);
+		window.scrollTo({ top: 0, behavior: "smooth" });
+	};
+
 	return (
-		<div className="w-full">
+		<div className="relative w-full">
+			<PrivacyModal
+				active={showPrivacyModal}
+				closeButton={() => {
+					setShowPrivacyModal(false);
+				}}
+			/>
 			<Form {...form}>
 				<form
 					onSubmit={form.handleSubmit(onSubmit)}
 					className="grid w-full grid-cols-1 gap-4"
 				>
-					<div className="space-y-4">
-						<FormField
-							control={form.control}
-							name="agePassed"
-							render={({ field }) => (
-								<FormItem className="space-y-3">
-									<FormLabel>Are you at least 18 years old?</FormLabel>
-									<FormControl>
-										<RadioGroup
-											onValueChange={(e) => {
-												field.onChange(e === "true");
-											}}
-											defaultValue={field.value ? "true" : "false"}
-											className="grid grid-cols-2 gap-4"
-										>
-											<FormItem className="flex items-center justify-end space-x-3 space-y-0">
-												<FormControl>
-													<RadioGroupItem value="true" />
-												</FormControl>
-												<FormLabel className="font-normal">Yes</FormLabel>
-											</FormItem>
-											<FormItem className="flex items-center space-x-3 space-y-0">
-												<FormControl>
-													<RadioGroupItem value="false" />
-												</FormControl>
-												<FormLabel className="font-normal">No</FormLabel>
-											</FormItem>
-										</RadioGroup>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+					<div className="space-y-5">
 						<FormField
 							control={form.control}
 							name="firstName"
@@ -141,12 +133,19 @@ export function LeadForm() {
 						/>
 						<FormField
 							control={form.control}
-							name="email"
+							name="phone"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Email</FormLabel>
+									<FormLabel>Phone</FormLabel>
 									<FormControl>
-										<Input required {...field} />
+										<PhoneInput
+											required
+											type="tel"
+											defaultCountry="US"
+											countries={["US"]}
+											{...field}
+											value={field.value ?? undefined}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -155,69 +154,94 @@ export function LeadForm() {
 						{form.watch("agePassed") ? (
 							<FormField
 								control={form.control}
-								name="phone"
+								name="email"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Phone</FormLabel>
+										<FormLabel>Email</FormLabel>
 										<FormControl>
-											<PhoneInput
-												required
-												type="tel"
-												defaultCountry="US"
-												countries={["US", "MX"]}
-												{...field}
-												value={field.value ?? undefined}
-												placeholder="(555) 333-4444"
-											/>
+											<Input required {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
 						) : null}
-						<FormField
-							control={form.control}
-							name="terms"
-							render={({ field }) => (
-								<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-									<FormControl>
-										<Checkbox
-											checked={field.value ?? false}
-											onCheckedChange={field.onChange}
-										/>
-									</FormControl>
-									<div className="space-y-1 leading-none">
-										<FormLabel>
-											Do you accept the terms and conditions?
-										</FormLabel>
-									</div>
-								</FormItem>
-							)}
-						/>
+						{form.watch("agePassed") ? (
+							<FormField
+								control={form.control}
+								name="terms"
+								render={({ field }) => (
+									<FormItem className="flex flex-col px-3 text-left">
+										<p className="-tracking-[0.3px] text-xs">
+											By marking the box below, I agree and consent that AT&T,
+											and its affiliated companies, as well as third parties
+											acting on AT&T's behalf, may process personal data from or
+											about me as outlined in the{" "}
+											<button
+												type="button"
+												className="cursor-pointer font-bold no-underline"
+												onMouseDown={(e) => {
+													e.preventDefault();
+													showModal();
+												}}
+											>
+												AT&T Privacy Notice
+											</button>{" "}
+											necessary to register me and facilitate my participation
+											at the event.
+										</p>
+										<div className="flex items-center">
+											<FormControl>
+												<Checkbox
+													checked={field.value ?? false}
+													onCheckedChange={field.onChange}
+												/>
+											</FormControl>
+											<div className="pl-2 leading-none">
+												<FormLabel className="font-light text-xs italic">
+													Required!
+												</FormLabel>
+											</div>
+										</div>
+									</FormItem>
+								)}
+							/>
+						) : null}
 						<FormField
 							control={form.control}
 							name="optIn"
 							render={({ field }) => (
-								<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-									<FormControl>
-										<Checkbox
-											checked={field.value ?? false}
-											onCheckedChange={field.onChange}
-										/>
-									</FormControl>
-									<div className="space-y-1 leading-none">
-										<FormLabel>
-											Would you like to receive marketing emails?
-										</FormLabel>
+								<FormItem className="flex flex-col px-3 text-left">
+									<p className="-tracking-[0.3px] text-xs">
+										By marking the box below and providing my email or number on
+										this form, I agree to receive a post-event marketing survey.
+										By providing my number on this form, I also agree to receive
+										no more than two text messages using automated dialing
+										equipment. Standard messaging rates apply.
+									</p>
+									<div className="flex items-center">
+										<FormControl>
+											<Checkbox
+												checked={field.value ?? false}
+												onCheckedChange={field.onChange}
+											/>
+										</FormControl>
+										<div className="pl-2 leading-none">
+											<FormLabel className="font-light text-xs italic">
+												Optional
+											</FormLabel>
+										</div>
 									</div>
 								</FormItem>
 							)}
 						/>
 						<Button
 							type="submit"
+							variant="attCobalt"
+							size="fixed"
 							disabled={createLead.isPending || !isSubmittable}
 						>
-							Submit
+							Continue
 						</Button>
 					</div>
 				</form>

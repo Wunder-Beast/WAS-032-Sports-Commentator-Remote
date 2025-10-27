@@ -27,7 +27,7 @@ export const leadRouter = createTRPCRouter({
 						agePassed: input.agePassed,
 						optIn: input.optIn,
 						terms: input.terms,
-						location: input.location,
+						play: input.play,
 					})
 					.returning();
 
@@ -55,12 +55,13 @@ export const leadRouter = createTRPCRouter({
 				throw error;
 			}
 		}),
-	getByLocation: protectedProcedure.query(async ({ ctx }) => {
+	getByPlay: protectedProcedure.query(async ({ ctx }) => {
 		return await ctx.db
 			.select({
-				loc1: sql<number>`cast(count(location = 'location 1' OR NULL) as int)`,
-				loc2: sql<number>`cast(count(location = 'location 2' OR NULL) as int)`,
-				loc3: sql<number>`cast(count(location = 'location 3' OR NULL) as int)`,
+				play1: sql<number>`cast(count(play = 1 OR NULL) as int)`,
+				play2: sql<number>`cast(count(play = 2 OR NULL) as int)`,
+				play3: sql<number>`cast(count(play = 3 OR NULL) as int)`,
+				play4: sql<number>`cast(count(play = 4 OR NULL) as int)`,
 			})
 			.from(leads);
 	}),

@@ -290,7 +290,8 @@
 	body {
 		@apply bg-background text-foreground font-sans;
 
-		main.att {
+		main.att,
+		.att {
 			@apply bg-att-blue text-white;
 
 			h1,
@@ -337,6 +338,18 @@
 
 			.privacy-content ol {
 				@apply list-outside list-decimal pl-5;
+			}
+
+			label {
+				@apply pl-5;
+			}
+
+			input {
+				@apply !text-black !bg-white !rounded-[30px] !border-white text-[18px] !px-5 !py-5.5;
+
+				&::placeholder {
+					@apply !text-neutral-500;
+				}
 			}
 		}
 	}
