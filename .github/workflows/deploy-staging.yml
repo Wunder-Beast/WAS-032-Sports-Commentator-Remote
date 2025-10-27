@@ -1,0 +1,85 @@
+name: Deploy - Staging
+
+on:
+  push:
+    branches:
+      - release/staging
+
+jobs:
+  build:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency: deployment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/bun.lockb') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/bun.lockb') }}-
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Package
+        run: bun run build
+        env:
+          # Environment-specific variables (from staging environment)
+          S3_BUCKET_NAME: ${{ vars.S3_BUCKET_NAME }}
+          NEXTAUTH_URL: ${{ vars.NEXTAUTH_URL }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+
+          # Environment-specific secrets
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          API_KEY: ${{ secrets.API_KEY }}
+
+          # Shared infrastructure secrets
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEPLOY_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEPLOY_AWS_SECRET_ACCESS_KEY }}
+
+          # SES Configuration (if enabled)
+          EMAIL_SERVER_HOST: ${{ vars.EMAIL_SERVER_HOST }}
+          EMAIL_SERVER_PORT: ${{ vars.EMAIL_SERVER_PORT }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_SERVER_USER: ${{ vars.EMAIL_SERVER_USER }}
+          EMAIL_SERVER_PASSWORD: ${{ secrets.EMAIL_SERVER_PASSWORD }}
+
+          # SpongeBob-specific environment variables
+          NEXT_PUBLIC_DB_ENV: staging
+          DATABASE_URL: file:./db.sqlite
+
+      - name: Deploy to Server
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avzr --delete --include=".next/***" --include="src/***" --include="public/***" --include="node_modules/***" --include="drizzle/***" --include="package.json" --include="next.config.js" --include="drizzle.config.ts" --include="next-env.d.ts" --include="tsconfig.json" --include="start-staging.sh" --exclude="*"
+          remote_path: /srv/www/staging/releases/${{ github.sha }}/
+          remote_host: ${{ secrets.EC2_HOST }}
+          remote_user: ubuntu
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Activate Deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            /usr/local/bin/deploy.sh staging ${{ github.sha }}

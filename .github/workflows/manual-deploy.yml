@@ -1,0 +1,173 @@
+name: Manual Deploy / Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      commit_sha:
+        description: 'Commit SHA to deploy (leave empty to show recent commits)'
+        required: false
+        type: string
+      action_type:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        default: 'deploy'
+        options:
+          - deploy
+          - rollback
+          - list_recent_commits
+
+jobs:
+  list-commits:
+    name: List Recent Commits
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.action_type == 'list_recent_commits' || github.event.inputs.commit_sha == '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 10
+
+      - name: List Recent Commits
+        run: |
+          echo "## Recent Commits Available for Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA | Date | Author | Message |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+
+          git log --oneline --format="%H|%ad|%an|%s" --date=short -10 | while IFS='|' read -r sha date author message; do
+            short_sha=$(echo $sha | cut -c1-8)
+            echo "| \`$short_sha\` | $date | $author | $message |" >> $GITHUB_STEP_SUMMARY
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To deploy a specific commit, run this workflow again with:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action**: deploy" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit SHA**: Copy the full SHA from the server or use the 8-character version above" >> $GITHUB_STEP_SUMMARY
+
+  check-existing-releases:
+    name: Check Existing Releases on Server
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.action_type == 'rollback' }}
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: List Available Releases on Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "Available releases for ${{ github.event.inputs.environment }}:"
+            echo "=============================================="
+
+            if [ -d "/srv/www/${{ github.event.inputs.environment }}/releases" ]; then
+              cd /srv/www/${{ github.event.inputs.environment }}/releases
+
+              # Get current active release
+              if [ -L "/srv/www/${{ github.event.inputs.environment }}/current" ]; then
+                current=$(basename $(readlink /srv/www/${{ github.event.inputs.environment }}/current))
+                echo "Currently active: $current"
+                echo ""
+              fi
+
+              echo "Available releases (most recent first):"
+              ls -1t | head -5 | while read release; do
+                if [ "$release" = "$current" ]; then
+                  echo "  $release (CURRENT)"
+                else
+                  echo "  $release"
+                fi
+              done
+
+              echo ""
+              echo "To rollback, run this workflow again with:"
+              echo "- Environment: ${{ github.event.inputs.environment }}"
+              echo "- Action: deploy"
+              echo "- Commit SHA: [copy one of the release names above]"
+            else
+              echo "No releases directory found for ${{ github.event.inputs.environment }}"
+            fi
+
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.action_type == 'deploy' && github.event.inputs.commit_sha != '' }}
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Validate Commit SHA
+        run: |
+          if [ -z "${{ github.event.inputs.commit_sha }}" ]; then
+            echo "❌ Commit SHA is required for deployment"
+            exit 1
+          fi
+
+          echo "🚀 Deploying commit ${{ github.event.inputs.commit_sha }} to ${{ github.event.inputs.environment }}"
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "🚀 Starting deployment/rollback to ${{ github.event.inputs.environment }}"
+            echo "📦 Target commit: ${{ github.event.inputs.commit_sha }}"
+            echo ""
+
+            # Check if the release exists
+            if [ ! -d "/srv/www/${{ github.event.inputs.environment }}/releases/${{ github.event.inputs.commit_sha }}" ]; then
+              echo "❌ Release ${{ github.event.inputs.commit_sha }} not found in /srv/www/${{ github.event.inputs.environment }}/releases/"
+              echo ""
+              echo "Available releases:"
+              ls -1t /srv/www/${{ github.event.inputs.environment }}/releases/ 2>/dev/null || echo "No releases found"
+              exit 1
+            fi
+
+            # Run the deployment script (this will handle symlink switching and service restart)
+            /usr/local/bin/deploy.sh ${{ github.event.inputs.environment }} ${{ github.event.inputs.commit_sha }}
+
+      - name: Verify Deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "🔍 Verifying deployment..."
+
+            # Check current symlink
+            if [ -L "/srv/www/${{ github.event.inputs.environment }}/current" ]; then
+              current_target=$(readlink /srv/www/${{ github.event.inputs.environment }}/current)
+              current_commit=$(basename "$current_target")
+              echo "✅ Current symlink points to: $current_commit"
+
+              if [ "$current_commit" = "${{ github.event.inputs.commit_sha }}" ]; then
+                echo "✅ Deployment successful - active release matches target"
+              else
+                echo "❌ Deployment may have failed - active release doesn't match target"
+                echo "   Expected: ${{ github.event.inputs.commit_sha }}"
+                echo "   Actual: $current_commit"
+              fi
+            else
+              echo "❌ No current symlink found"
+            fi
+
+            # Check service status
+            service_status=$(sudo systemctl is-active nextjs-${{ github.event.inputs.environment }})
+            echo "🔧 Service status: $service_status"
+
+            if [ "$service_status" = "active" ]; then
+              echo "✅ Service is running"
+            else
+              echo "❌ Service is not running"
+              echo "Service logs:"
+              sudo journalctl -u nextjs-${{ github.event.inputs.environment }} -n 10 --no-pager
+            fi

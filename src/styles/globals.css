@@ -1,0 +1,343 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@font-face {
+	font-family: "ATT Aleck Sans";
+	src:
+		url("/fonts/ATTAleckSans-Regular.woff2") format("woff2"),
+		url("/fonts/ATTAleckSans-Regular.woff") format("woff");
+	font-weight: normal;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck Sans";
+	src:
+		url("/fonts/ATTAleckSans-Italic.woff2") format("woff2"),
+		url("/fonts/ATTAleckSans-Italic.woff") format("woff");
+	font-weight: normal;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck Sans";
+	src:
+		url("/fonts/ATTAleckSans-Light.woff2") format("woff2"),
+		url("/fonts/ATTAleckSans-Light.woff") format("woff");
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck Sans";
+	src:
+		url("/fonts/ATTAleckSans-LightItalic.woff2") format("woff2"),
+		url("/fonts/ATTAleckSans-LightItalic.woff") format("woff");
+	font-weight: 300;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck Sans";
+	src:
+		url("/fonts/ATTAleckSans-Medium.woff2") format("woff2"),
+		url("/fonts/ATTAleckSans-Medium.woff") format("woff");
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck Sans";
+	src:
+		url("/fonts/ATTAleckSans-MediumItalic.woff2") format("woff2"),
+		url("/fonts/ATTAleckSans-MediumItalic.woff") format("woff");
+	font-weight: 500;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck Sans";
+	src:
+		url("/fonts/ATTAleckSans-Bold.woff2") format("woff2"),
+		url("/fonts/ATTAleckSans-Bold.woff") format("woff");
+	font-weight: bold;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck Sans";
+	src:
+		url("/fonts/ATTAleckSans-BoldItalic.woff2") format("woff2"),
+		url("/fonts/ATTAleckSans-BoldItalic.woff") format("woff");
+	font-weight: bold;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_Bd.ttf");
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_BdIt.ttf");
+	font-weight: 700;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_Blk.ttf");
+	font-weight: 900;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_BlkIt.ttf");
+	font-weight: 900;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_Rg.ttf");
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_It.ttf");
+	font-weight: 400;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_Lt.ttf");
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_LtIt.ttf");
+	font-weight: 300;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_Md.ttf");
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "ATT Aleck CD";
+	src: url("/fonts/ATTAleckCd_MdIt.ttf");
+	font-weight: 500;
+	font-style: italic;
+	font-display: swap;
+}
+
+@theme {
+	--color-border: hsl(var(--border));
+	--color-input: hsl(var(--input));
+	--color-ring: hsl(var(--ring));
+	--color-background: hsl(var(--background));
+	--color-foreground: hsl(var(--foreground));
+
+	--color-primary: hsl(var(--primary));
+	--color-primary-foreground: hsl(var(--primary-foreground));
+
+	--color-secondary: hsl(var(--secondary));
+	--color-secondary-foreground: hsl(var(--secondary-foreground));
+
+	--color-destructive: hsl(var(--destructive));
+	--color-destructive-foreground: hsl(var(--destructive-foreground));
+
+	--color-muted: hsl(var(--muted));
+	--color-muted-foreground: hsl(var(--muted-foreground));
+
+	--color-accent: hsl(var(--accent));
+	--color-accent-foreground: hsl(var(--accent-foreground));
+
+	--color-popover: hsl(var(--popover));
+	--color-popover-foreground: hsl(var(--popover-foreground));
+
+	--color-card: hsl(var(--card));
+	--color-card-foreground: hsl(var(--card-foreground));
+
+	--font-sans: "ATT Aleck Sans", ui-sans-serif, system-ui, sans-serif;
+	--font-headline: "ATT Aleck CD", ui-sans-serif, system-ui, sans-serif;
+	--color-black: #000;
+	--color-white: #fff;
+
+	--radius-brand: 75px;
+	--radius-lg: var(--radius);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-sm: calc(var(--radius) - 4px);
+
+	--animate-accordion-down: accordion-down 0.2s ease-out;
+	--animate-accordion-up: accordion-up 0.2s ease-out;
+
+	@keyframes accordion-down {
+		from {
+			height: 0;
+		}
+		to {
+			height: var(--radix-accordion-content-height);
+		}
+	}
+	@keyframes accordion-up {
+		from {
+			height: var(--radix-accordion-content-height);
+		}
+		to {
+			height: 0;
+		}
+	}
+}
+
+:root {
+	--radius: 0.625rem;
+	--background: oklch(1 0 0);
+	--foreground: oklch(0.145 0 0);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.145 0 0);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.145 0 0);
+	--primary: oklch(0.205 0 0);
+	--primary-foreground: oklch(0.985 0 0);
+	--secondary: oklch(0.97 0 0);
+	--secondary-foreground: oklch(0.205 0 0);
+	--muted: oklch(0.97 0 0);
+	--muted-foreground: oklch(0.556 0 0);
+	--accent: oklch(0.97 0 0);
+	--accent-foreground: oklch(0.205 0 0);
+	--destructive: oklch(0.577 0.245 27.325);
+	--border: oklch(0.922 0 0);
+	--input: oklch(0.922 0 0);
+	--ring: oklch(0.708 0 0);
+	--chart-1: oklch(0.646 0.222 41.116);
+	--chart-2: oklch(0.6 0.118 184.704);
+	--chart-3: oklch(0.398 0.07 227.392);
+	--chart-4: oklch(0.828 0.189 84.429);
+	--chart-5: oklch(0.769 0.188 70.08);
+	--sidebar: oklch(0.985 0 0);
+	--sidebar-foreground: oklch(0.145 0 0);
+	--sidebar-primary: oklch(0.205 0 0);
+	--sidebar-primary-foreground: oklch(0.985 0 0);
+	--sidebar-accent: oklch(0.97 0 0);
+	--sidebar-accent-foreground: oklch(0.205 0 0);
+	--sidebar-border: oklch(0.922 0 0);
+	--sidebar-ring: oklch(0.708 0 0);
+	--att-blue: #009fdb;
+	--att-dark-blue: #00388f;
+	--att-cobalt: #0057b8;
+	--att-purple: #af29bb;
+	--att-berry: #ff585d;
+	--att-orange: #ffb000;
+	--att-lime: #91dc00;
+	--att-mint: #49eedc;
+}
+
+@theme inline {
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
+	--color-att-blue: var(--att-blue);
+	--color-att-dark-blue: var(--att-dark-blue);
+	--color-att-cobalt: var(--att-cobalt);
+	--color-att-purple: var(--att-purple);
+	--color-att-berry: var(--att-berry);
+	--color-att-orange: var(--att-orange);
+	--color-att-lime: var(--att-lime);
+	--color-att-mint: var(--att-mint);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+
+	body {
+		@apply bg-background text-foreground font-sans;
+
+		main.att {
+			@apply bg-att-blue text-white;
+
+			h1,
+			h2,
+			h3,
+			h4,
+			h5,
+			h6 {
+				@apply font-headline;
+			}
+
+			h1 {
+				@apply font-black text-[40px] leading-[1.1];
+			}
+
+			p {
+				@apply text-[18px];
+			}
+
+			.privacy-content h1 {
+				@apply mb-5 font-sans text-[28px] font-normal text-att-blue;
+			}
+
+			.privacy-content h2 {
+				@apply mb-5 font-headline text-2xl font-black;
+			}
+
+			.privacy-content h3 {
+				@apply mb-5 font-headline text-xl font-black;
+			}
+
+			.privacy-content h4 {
+				@apply mb-3 font-headline text-lg font-black;
+			}
+
+			.privacy-content p,
+			.privacy-content li {
+				@apply mb-3 text-sm;
+			}
+
+			.privacy-content ul {
+				@apply list-outside list-disc pl-5;
+			}
+
+			.privacy-content ol {
+				@apply list-outside list-decimal pl-5;
+			}
+		}
+	}
+}

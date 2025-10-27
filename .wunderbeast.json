@@ -1,0 +1,18 @@
+{
+	"projectName": "was-032",
+	"displayName": "WAS-032-Sports-Commentator-Remote",
+	"domain": "changeme.com",
+	"features": [
+		"auth",
+		"database",
+		"trpc",
+		"admin",
+		"external-api",
+		"sms",
+		"lead-file-uploads",
+		"video-share"
+	],
+	"infrastructure": ["route53", "ec2", "s3", "ses", "acm"],
+	"variant": "att",
+	"databaseDriver": "sqlite"
+}

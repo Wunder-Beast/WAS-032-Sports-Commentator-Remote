@@ -1,0 +1,514 @@
+# Infrastructure Management Template
+# Usage: just <command>
+
+# Configuration - These are updated by `just init-project`
+PROJECT_DISPLAY_NAME := "WAS-032-Sports-Commentator-Remote"
+PROJECT_NAME := "was-032"
+DOMAIN_NAME := "changeme.com"
+
+# Default recipe - show available commands
+default:
+    @just --list
+
+# Initialize OpenTofu (renamed to avoid confusion with init-project)
+tofu-init:
+    tofu init
+
+# Format OpenTofu files
+fmt:
+    tofu fmt -recursive
+
+# Validate OpenTofu configuration
+validate:
+    tofu validate
+
+# Plan infrastructure changes
+plan:
+    tofu plan
+
+# Apply infrastructure changes
+apply:
+    tofu apply
+
+# Destroy infrastructure (with confirmation)
+destroy:
+    @echo "⚠️  This will destroy ALL WAS-032-Sports-Commentator-Remote infrastructure!"
+    tofu destroy
+
+# Show infrastructure outputs
+output:
+    tofu output
+
+# Show current state
+state:
+    tofu state list
+
+# Generate SSH keys for the project (with 1Password integration)
+generate-keys:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    ITEM_NAME="WAS-032-Sports-Commentator-Remote - SSH Key"
+    
+    # Check if 1Password CLI is available
+    if command -v op &> /dev/null; then
+        echo "🔐 1Password CLI detected - checking for existing keys..."
+        
+        # Try to retrieve existing keys from 1Password
+        if op item get "$ITEM_NAME" --vault="Shared" &> /dev/null; then
+            echo "🔑 Found existing SSH keys in 1Password, retrieving..."
+            mkdir -p ./keys
+            
+            # Get private key
+            op item get "$ITEM_NAME" --field="private_key" --vault="Shared" > ./keys/id_ed25519
+            chmod 600 ./keys/id_ed25519
+            
+            # Get public key
+            op item get "$ITEM_NAME" --field="public_key" --vault="Shared" > ./keys/id_ed25519.pub  
+            chmod 644 ./keys/id_ed25519.pub
+            
+            echo "✅ SSH keys retrieved from 1Password"
+        elif [ -f "./keys/id_ed25519" ] && [ -f "./keys/id_ed25519.pub" ]; then
+            echo "🔑 Found existing local SSH keys, storing in 1Password..."
+            
+            echo "🔐 Storing SSH keys in 1Password..."
+            # Create new item in 1Password with the existing keys
+            op item create --vault="Shared" --category="Secure Note" \
+                --title="$ITEM_NAME" \
+                --tags="ssh,aws,infrastructure" \
+                "private_key[password]=$(cat ./keys/id_ed25519)" \
+                "public_key=$(cat ./keys/id_ed25519.pub)" \
+                "notes=SSH keys for WAS-032-Sports-Commentator-Remote AWS infrastructure"
+            
+            echo "✅ Existing SSH keys stored in 1Password"
+        else
+            echo "🔑 Generating new SSH key pair..."
+            mkdir -p ./keys
+            ssh-keygen -t ed25519 -C "was-032" -f ./keys/id_ed25519 -N ""
+            chmod 600 ./keys/id_ed25519
+            chmod 644 ./keys/id_ed25519.pub
+            
+            echo "🔐 Storing SSH keys in 1Password..."
+            # Create new item in 1Password with the keys
+            op item create --vault="Shared" --category="Secure Note" \
+                --title="$ITEM_NAME" \
+                --tags="ssh,aws,infrastructure" \
+                "private_key[password]=$(cat ./keys/id_ed25519)" \
+                "public_key=$(cat ./keys/id_ed25519.pub)" \
+                "notes=SSH keys for WAS-032-Sports-Commentator-Remote AWS infrastructure"
+            
+            echo "✅ SSH keys generated and stored in 1Password"
+        fi
+    else
+        echo "⚠️  1Password CLI not found - falling back to local key generation"
+        if [ ! -d "./keys" ]; then
+            mkdir -p ./keys
+        fi
+        if [ ! -f "./keys/id_ed25519" ]; then
+            echo "🔑 Generating SSH key pair..."
+            ssh-keygen -t ed25519 -C "was-032" -f ./keys/id_ed25519 -N ""
+            chmod 600 ./keys/id_ed25519
+            chmod 644 ./keys/id_ed25519.pub
+            echo "✅ SSH keys generated locally"
+        else
+            echo "SSH keys already exist"
+        fi
+    fi
+
+# Import existing Route53 hosted zone
+import-zone:
+    #!/usr/bin/env bash
+    echo "📦 Importing existing Route53 zone for changeme.com"
+    echo "⚠️  Make sure create_hosted_zone = false in terraform.tfvars"
+    read -p "Continue? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # Import the existing zone data source (no actual import needed for data sources)
+        echo "✅ Zone configuration ready. The existing zone will be used."
+        echo "📝 Run 'just plan' to verify configuration"
+    else
+        echo "❌ Import cancelled"
+    fi
+
+# Connect to EC2 instance via SSH
+connect:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f "terraform.tfstate" ]; then
+        echo "❌ No infrastructure deployed. Run 'just apply' first."
+        exit 1
+    fi
+    
+    PUBLIC_IP=$(tofu output -raw ec2_public_ip 2>/dev/null || echo "")
+    if [ -z "$PUBLIC_IP" ]; then
+        echo "❌ Could not get public IP. Is infrastructure deployed?"
+        exit 1
+    fi
+    
+    if [ ! -f "./keys/id_ed25519" ]; then
+        echo "❌ SSH key not found. Run 'just generate-keys' first."
+        exit 1
+    fi
+    
+    chmod 600 ./keys/id_ed25519
+    echo "🔌 Connecting to server at $PUBLIC_IP..."
+    ssh -i ./keys/id_ed25519 -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" ubuntu@$PUBLIC_IP
+
+# Generate environment variables for local development
+env:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    echo "📝 was-032 Environment Variables"
+    echo "=================================="
+    tofu output -json | jq -r '
+        .ec2_public_ip.value as $ip |
+        .s3_buckets.value // {} as $s3 |
+        .ses_info.value // {} as $ses |
+        .iam_env_vars.value // {} as $iam |
+        "# was-032 Infrastructure Environment Variables",
+        "# Generated on " + (now | strftime("%Y-%m-%d %H:%M:%S")),
+        "",
+        "# Server",
+        "EC2_HOST=" + $ip,
+        "",
+        "# AWS Configuration", 
+        "AWS_REGION=" + ($iam.AWS_REGION // "us-east-1"),
+        "",
+        "# S3 Buckets",
+        (if ($s3 | has("was-032-staging")) then "S3_BUCKET_STAGING=" + $s3["was-032-staging"] else "# S3_BUCKET_STAGING=not_created" end),
+        (if ($s3 | has("was-032-production")) then "S3_BUCKET_PRODUCTION=" + $s3["was-032-production"] else "# S3_BUCKET_PRODUCTION=not_created" end),
+        "",
+        "# SES Configuration",
+        (if ($ses | has("SES_DOMAIN")) then "SES_DOMAIN=" + $ses.SES_DOMAIN else "# SES_DOMAIN=not_configured" end),
+        (if ($ses | has("SES_REGION")) then "SES_REGION=" + $ses.SES_REGION else "# SES_REGION=not_configured" end),
+        "",
+        "# Application URLs",
+        "NEXTAUTH_URL=https://changeme.com",
+        "NEXTAUTH_URL_STAGING=https://staging.changeme.com"
+    '
+
+# Regenerate GitHub Actions secrets (convenience command)
+regenerate-github-secrets:
+    @just setup-github-actions --regenerate-secrets
+
+# Enhanced GitHub Actions setup with environment-specific variables
+# This command is idempotent - safe to run multiple times
+# Use --regenerate-secrets flag to force new secret generation
+setup-github-actions FLAG="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    echo "🔧 Setting up GitHub Actions for was-032"
+    echo "=========================================="
+    
+    if ! command -v gh &> /dev/null; then
+        echo "❌ GitHub CLI not found. Install with: brew install gh"
+        exit 1
+    fi
+    
+    if ! gh auth status >/dev/null 2>&1; then
+        echo "❌ Not authenticated with GitHub. Run: gh auth login"
+        exit 1
+    fi
+    
+    # Check if infrastructure is deployed
+    if [ ! -f "terraform.tfstate" ]; then
+        echo "❌ Infrastructure not deployed. Run 'just apply' first."
+        exit 1
+    fi
+    
+    # Extract infrastructure outputs
+    echo "📊 Extracting infrastructure outputs..."
+    EC2_IP=$(tofu output -raw ec2_public_ip)
+    AWS_KEY=$(tofu output -raw deployment_access_key_id)
+    AWS_SECRET=$(tofu output -raw deployment_secret_access_key)
+    AWS_REGION=$(tofu output -raw aws_region)
+    
+    # Get S3 bucket names
+    S3_STAGING=""
+    S3_PRODUCTION=""
+    if tofu output s3_buckets >/dev/null 2>&1; then
+        S3_STAGING=$(tofu output -json s3_buckets | jq -r '."was-032-staging" // empty')
+        S3_PRODUCTION=$(tofu output -json s3_buckets | jq -r '."was-032-production" // empty')
+    fi
+    
+    # Get SES configuration
+    SES_DOMAIN=""
+    SES_REGION=""
+    SMTP_USERNAME=""
+    SMTP_PASSWORD=""
+    SMTP_HOST=""
+    SMTP_PORT=""
+    if tofu output ses_info >/dev/null 2>&1; then
+        SES_INFO=$(tofu output -json ses_info)
+        SES_DOMAIN=$(echo "$SES_INFO" | jq -r '.SES_DOMAIN // empty')
+        SES_REGION=$(echo "$SES_INFO" | jq -r '.SES_REGION // empty')
+        SMTP_HOST=$(echo "$SES_INFO" | jq -r '.SMTP_HOST // empty')
+        SMTP_PORT=$(echo "$SES_INFO" | jq -r '.SMTP_PORT // empty')
+        SMTP_USERNAME=$(echo "$SES_INFO" | jq -r '.SMTP_USERNAME // empty')
+        SMTP_PASSWORD=$(echo "$SES_INFO" | jq -r '.SMTP_PASSWORD // empty')
+    fi
+    
+    # SSH private key
+    SSH_KEY=""
+    if [ -f "./keys/id_ed25519" ]; then
+        SSH_KEY=$(cat ./keys/id_ed25519)
+    else
+        echo "❌ SSH key not found at ./keys/id_ed25519"
+        exit 1
+    fi
+    
+    # Create/update GitHub environments
+    echo "🌍 Creating GitHub environments..."
+    gh api repos/:owner/:repo/environments/staging --method PUT || true
+    gh api repos/:owner/:repo/environments/production --method PUT || true
+    
+    # Set repository-level secrets (shared across environments)
+    echo "🔐 Setting repository-level secrets..."
+    echo "$SSH_KEY" | gh secret set SSH_PRIVATE_KEY
+    echo "$AWS_KEY" | gh secret set DEPLOY_AWS_ACCESS_KEY_ID
+    echo "$AWS_SECRET" | gh secret set DEPLOY_AWS_SECRET_ACCESS_KEY
+    echo "$EC2_IP" | gh secret set EC2_HOST
+    
+    # Set environment-specific variables
+    DOMAIN_NAME=$(tofu output -raw domain_name)
+    
+    echo "📋 Setting staging environment variables..."
+    gh variable set NEXTAUTH_URL --body "https://staging.${DOMAIN_NAME}" --env staging
+    gh variable set NEXT_PUBLIC_DB_ENV --body "staging" --env staging
+
+    if [ -n "$S3_STAGING" ]; then
+        gh variable set S3_BUCKET_NAME --body "$S3_STAGING" --env staging
+        gh variable set AWS_REGION --body "$AWS_REGION" --env staging
+    fi
+
+    if [ -n "$SMTP_HOST" ]; then
+        gh variable set EMAIL_SERVER_HOST --body "$SMTP_HOST" --env staging
+        gh variable set EMAIL_SERVER_PORT --body "$SMTP_PORT" --env staging
+        gh variable set EMAIL_FROM --body "noreply@${DOMAIN_NAME}" --env staging
+        gh variable set EMAIL_SERVER_USER --body "$SMTP_USERNAME" --env staging
+        echo "$SMTP_PASSWORD" | gh secret set EMAIL_SERVER_PASSWORD --env staging
+    fi
+    
+    echo "📋 Setting production environment variables..."
+    gh variable set NEXTAUTH_URL --body "https://${DOMAIN_NAME}" --env production
+    gh variable set NEXT_PUBLIC_DB_ENV --body "production" --env production
+
+    if [ -n "$S3_PRODUCTION" ]; then
+        gh variable set S3_BUCKET_NAME --body "$S3_PRODUCTION" --env production
+        gh variable set AWS_REGION --body "$AWS_REGION" --env production
+    fi
+
+    if [ -n "$SMTP_HOST" ]; then
+        gh variable set EMAIL_SERVER_HOST --body "$SMTP_HOST" --env production
+        gh variable set EMAIL_SERVER_PORT --body "$SMTP_PORT" --env production
+        gh variable set EMAIL_FROM --body "noreply@${DOMAIN_NAME}" --env production
+        gh variable set EMAIL_SERVER_USER --body "$SMTP_USERNAME" --env production
+        echo "$SMTP_PASSWORD" | gh secret set EMAIL_SERVER_PASSWORD --env production
+    fi
+    
+    # Check if we should regenerate secrets
+    REGENERATE_SECRETS=false
+    if [ "{{FLAG}}" = "--regenerate-secrets" ]; then
+        REGENERATE_SECRETS=true
+        echo "⚠️  Regenerating all secrets (--regenerate-secrets flag provided)"
+    fi
+
+    # Generate and set secrets for each environment
+    # Only generate new ones if they don't exist or if regeneration is requested
+    if [ -f ../.env.staging ] && [ "$REGENERATE_SECRETS" = false ]; then
+        echo "🔑 Using existing secrets from .env.staging and .env.production"
+        NEXTAUTH_SECRET_STAGING=$(grep "^NEXTAUTH_SECRET=" ../.env.staging | cut -d'=' -f2- | tr -d '"')
+        NEXTAUTH_SECRET_PRODUCTION=$(grep "^NEXTAUTH_SECRET=" ../.env.production | cut -d'=' -f2- | tr -d '"')
+        API_KEY_STAGING=$(grep "^API_KEY=" ../.env.staging | cut -d'=' -f2- | tr -d '"')
+        API_KEY_PRODUCTION=$(grep "^API_KEY=" ../.env.production | cut -d'=' -f2- | tr -d '"')
+    else
+        echo "🔑 Generating new secrets for environments..."
+        NEXTAUTH_SECRET_STAGING=$(openssl rand -base64 32)
+        NEXTAUTH_SECRET_PRODUCTION=$(openssl rand -base64 32)
+        API_KEY_STAGING=$(openssl rand -hex 32)
+        API_KEY_PRODUCTION=$(openssl rand -hex 32)
+    fi
+
+    # Create complete environment files for each environment
+    echo "📝 Creating environment files..."
+
+    # Staging environment file
+    echo "# Staging Environment Configuration" > ../.env.staging
+    echo "# Generated on $(date)" >> ../.env.staging
+    echo "# This file contains both variables and secrets for staging" >> ../.env.staging
+    echo "" >> ../.env.staging
+    echo "# Drizzle" >> ../.env.staging
+    echo "NEXT_PUBLIC_DB_ENV=staging" >> ../.env.staging
+    echo "DATABASE_URL=file:./db.sqlite" >> ../.env.staging
+    echo "" >> ../.env.staging
+    echo "# Next Auth" >> ../.env.staging
+    echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET_STAGING" >> ../.env.staging
+    echo "NEXTAUTH_URL=https://staging.changeme.com" >> ../.env.staging
+    echo "" >> ../.env.staging
+    echo "API_KEY=$API_KEY_STAGING" >> ../.env.staging
+    echo "" >> ../.env.staging
+    echo "# Email Configuration" >> ../.env.staging
+    if [ -n "$SMTP_HOST" ]; then
+        echo "EMAIL_SERVER_HOST=$SMTP_HOST" >> ../.env.staging
+        echo "EMAIL_SERVER_USER=$SMTP_USERNAME" >> ../.env.staging
+        echo "EMAIL_SERVER_PASSWORD=$SMTP_PASSWORD" >> ../.env.staging
+        echo "EMAIL_SERVER_PORT=$SMTP_PORT" >> ../.env.staging
+        echo "EMAIL_FROM=noreply@changeme.com" >> ../.env.staging
+    fi
+    echo "" >> ../.env.staging
+    echo "# S3 Configuration" >> ../.env.staging
+    if [ -n "$S3_STAGING" ]; then
+        echo "AWS_ACCESS_KEY_ID=$AWS_KEY" >> ../.env.staging
+        echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET" >> ../.env.staging
+        echo "AWS_REGION=$AWS_REGION" >> ../.env.staging
+        echo "S3_BUCKET_NAME=$S3_STAGING" >> ../.env.staging
+        echo "# S3_ENDPOINT= # Leave empty for AWS S3" >> ../.env.staging
+        echo "# S3_FORCE_PATH_STYLE=false # Leave empty for AWS S3" >> ../.env.staging
+    fi
+    chmod 600 ../.env.staging
+
+    # Production environment file
+    echo "# Production Environment Configuration" > ../.env.production
+    echo "# Generated on $(date)" >> ../.env.production
+    echo "# This file contains both variables and secrets for production" >> ../.env.production
+    echo "" >> ../.env.production
+    echo "# Drizzle" >> ../.env.production
+    echo "NEXT_PUBLIC_DB_ENV=production" >> ../.env.production
+    echo "DATABASE_URL=file:./db.sqlite" >> ../.env.production
+    echo "" >> ../.env.production
+    echo "# Next Auth" >> ../.env.production
+    echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET_PRODUCTION" >> ../.env.production
+    echo "NEXTAUTH_URL=https://changeme.com" >> ../.env.production
+    echo "" >> ../.env.production
+    echo "API_KEY=$API_KEY_PRODUCTION" >> ../.env.production
+    echo "" >> ../.env.production
+    echo "# Email Configuration" >> ../.env.production
+    if [ -n "$SMTP_HOST" ]; then
+        echo "EMAIL_SERVER_HOST=$SMTP_HOST" >> ../.env.production
+        echo "EMAIL_SERVER_USER=$SMTP_USERNAME" >> ../.env.production
+        echo "EMAIL_SERVER_PASSWORD=$SMTP_PASSWORD" >> ../.env.production
+        echo "EMAIL_SERVER_PORT=$SMTP_PORT" >> ../.env.production
+        echo "EMAIL_FROM=noreply@changeme.com" >> ../.env.production
+    fi
+    echo "" >> ../.env.production
+    echo "# S3 Configuration" >> ../.env.production
+    if [ -n "$S3_PRODUCTION" ]; then
+        echo "AWS_ACCESS_KEY_ID=$AWS_KEY" >> ../.env.production
+        echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET" >> ../.env.production
+        echo "AWS_REGION=$AWS_REGION" >> ../.env.production
+        echo "S3_BUCKET_NAME=$S3_PRODUCTION" >> ../.env.production
+        echo "# S3_ENDPOINT= # Leave empty for AWS S3" >> ../.env.production
+        echo "# S3_FORCE_PATH_STYLE=false # Leave empty for AWS S3" >> ../.env.production
+    fi
+    chmod 600 ../.env.production
+
+    echo "📝 Environment files created: .env.staging and .env.production (gitignored)"
+    
+    echo "$NEXTAUTH_SECRET_STAGING" | gh secret set NEXTAUTH_SECRET --env staging
+    echo "$NEXTAUTH_SECRET_PRODUCTION" | gh secret set NEXTAUTH_SECRET --env production
+    echo "$API_KEY_STAGING" | gh secret set API_KEY --env staging
+    echo "$API_KEY_PRODUCTION" | gh secret set API_KEY --env production
+
+    # Generate and set a default DATABASE_URL for local SQLite
+    echo "🗄️ Setting default DATABASE_URL for SQLite..."
+    DATABASE_URL="file:./db.sqlite"
+    echo "$DATABASE_URL" | gh secret set DATABASE_URL --env staging
+    echo "$DATABASE_URL" | gh secret set DATABASE_URL --env production
+
+    # Set AWS credentials as secrets for S3 access (per environment)
+    if [ -n "$S3_STAGING" ]; then
+        echo "$AWS_KEY" | gh secret set AWS_ACCESS_KEY_ID --env staging
+        echo "$AWS_SECRET" | gh secret set AWS_SECRET_ACCESS_KEY --env staging
+    fi
+
+    if [ -n "$S3_PRODUCTION" ]; then
+        echo "$AWS_KEY" | gh secret set AWS_ACCESS_KEY_ID --env production
+        echo "$AWS_SECRET" | gh secret set AWS_SECRET_ACCESS_KEY --env production
+    fi
+    
+    echo ""
+    echo "✅ GitHub Actions configured for was-032!"
+    echo ""
+    echo "📋 Infrastructure secrets/variables automatically set:"
+    echo "   Repository secrets:"
+    echo "     - SSH_PRIVATE_KEY, DEPLOY_AWS_*, EC2_HOST"
+    echo ""
+    echo "   Staging environment:"
+    echo "     Variables: NEXTAUTH_URL, NEXT_PUBLIC_DB_ENV, EMAIL_FROM, S3_BUCKET_NAME, AWS_REGION, EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_SERVER_USER"
+    echo "     Secrets: NEXTAUTH_SECRET, DATABASE_URL, API_KEY, EMAIL_SERVER_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
+    echo ""
+    echo "   Production environment:"
+    echo "     Variables: NEXTAUTH_URL, NEXT_PUBLIC_DB_ENV, EMAIL_FROM, S3_BUCKET_NAME, AWS_REGION, EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_SERVER_USER"
+    echo "     Secrets: NEXTAUTH_SECRET, DATABASE_URL, API_KEY, EMAIL_SERVER_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
+    echo ""
+    echo "📁 Environment files created:"
+    echo "   - .env.staging (complete environment for staging)"
+    echo "   - .env.production (complete environment for production)"
+    echo "   These can be copied directly to the EC2 instance"
+    echo ""
+    echo "⚠️  Optional: You may want to set additional secrets:"
+    echo "   Go to: https://github.com/$(gh repo view --json owner,name --jq '.owner.login + "/" + .name')/settings/environments"
+    echo ""
+    echo "   Possible additions:"
+    echo "   - API keys for third-party services"
+    echo "   - OAuth client secrets"
+    echo "   - Payment gateway keys"
+    echo "   - External database URLs (to replace SQLite)"
+
+# Quick deployment workflow
+deploy-all: generate-keys tofu-init plan apply
+    #!/usr/bin/env bash
+    
+    echo "🎉 Infrastructure deployed!"
+    echo ""
+    echo "🌐 Your domains:"
+    echo "   Production: https://changeme.com"
+    echo "   Staging: https://staging.changeme.com"  
+    echo ""
+    echo "📝 Next steps:"
+    echo "1. Run 'just setup-github-actions' to configure CI/CD"
+    echo "2. Run 'just connect' to SSH into the server"
+    echo "3. Set up your application on the server"
+
+# Show project status
+status:
+    #!/usr/bin/env bash
+    
+    echo "📊 was-032 Infrastructure Status"
+    echo "=================================="
+    echo "📋 Project: was-032"
+    echo "🌐 Domain: changeme.com"
+    echo "📍 Region: us-east-1"
+    echo ""
+    
+    if [ -f "terraform.tfstate" ]; then
+        echo "☁️  Infrastructure: ✅ Deployed"
+        echo "   Server IP: $(tofu output -raw ec2_public_ip 2>/dev/null || echo 'Unknown')"
+        if tofu output s3_buckets >/dev/null 2>&1; then
+            echo "   S3 Buckets: ✅ Created"
+        fi
+        if tofu output ses_info >/dev/null 2>&1; then
+            echo "   SES: ✅ Configured"
+        fi
+    else
+        echo "☁️  Infrastructure: ❌ Not deployed"
+        echo "   Run 'just deploy-all' to get started"
+    fi
+    
+    echo ""
+    echo "🔑 SSH Keys: $([ -f './keys/id_ed25519' ] && echo '✅ Generated' || echo '❌ Missing')"
+    
+    if command -v gh &> /dev/null && gh auth status >/dev/null 2>&1; then
+        echo "🔧 GitHub CLI: ✅ Authenticated"
+    else
+        echo "🔧 GitHub CLI: ❌ Not authenticated"
+    fi
+
+# Clean up local files (keeps infrastructure)
+clean:
+    rm -f .env.generated
+    rm -f terraform.tfplan
+    rm -f *.backup
+    echo "🧹 Cleaned up temporary files"
