@@ -69,7 +69,7 @@ jobs:
       - name: Deploy to Server
         uses: burnett01/rsync-deployments@7.0.1
         with:
-          switches: -avzr --delete --include=".next/***" --include="src/***" --include="public/***" --include="node_modules/***" --include="drizzle/***" --include="package.json" --include="next.config.js" --include="drizzle.config.ts" --include="next-env.d.ts" --include="tsconfig.json" --include="start-staging.sh" --exclude="*"
+          switches: -avzr --exclude=".git" --exclude="node_modules/.cache" --exclude="db.sqlite" --exclude="*.db"
           remote_path: /srv/www/staging/releases/${{ github.sha }}/
           remote_host: ${{ secrets.EC2_HOST }}
           remote_user: ubuntu

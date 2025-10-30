@@ -3,7 +3,7 @@
 
 # Project settings
 project_name = "was-032"
-domain_name  = "changeme.com"
+domain_name  = "callthegamecfp.com"
 aws_region   = "us-east-1"
 
 # Environment Configuration
@@ -31,6 +31,6 @@ create_deployment_user = true             # For GitHub Actions CI/CD
 
 
 # SES Configuration (Email)
-ses_domain = "changeme.com"                # Usually same as domain_name
+ses_domain = "callthegamecfp.com"                # Usually same as domain_name
 create_smtp_user = true                    # Create IAM user with SMTP credentials
 smtp_user_name = ""                        # Leave empty to use default (project-name-smtp)

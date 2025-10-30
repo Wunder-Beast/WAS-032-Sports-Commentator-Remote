@@ -1,7 +1,7 @@
 {
 	"projectName": "was-032",
 	"displayName": "WAS-032-Sports-Commentator-Remote",
-	"domain": "changeme.com",
+	"domain": "callthegamecfp.com",
 	"features": [
 		"auth",
 		"database",
@@ -12,7 +12,13 @@
 		"lead-file-uploads",
 		"video-share"
 	],
-	"infrastructure": ["route53", "ec2", "s3", "ses", "acm"],
+	"infrastructure": [
+		"route53",
+		"ec2",
+		"s3",
+		"ses",
+		"acm"
+	],
 	"variant": "att",
 	"databaseDriver": "sqlite"
 }

@@ -92,6 +92,22 @@ if [[ ! -f "$DB_FILE" ]]; then
     chmod 644 "$DB_FILE"
 fi
 
+# Backup database if it exists and has content
+if [[ -f "$DB_FILE" && -s "$DB_FILE" ]]; then
+    BACKUP_DIR="${BASE_DIR}/backups"
+    mkdir -p "$BACKUP_DIR"
+    BACKUP_FILE="${BACKUP_DIR}/db-$(date +%Y%m%d-%H%M%S).sqlite"
+    echo "💾 Creating database backup: $BACKUP_FILE"
+    cp "$DB_FILE" "$BACKUP_FILE"
+    chown ubuntu:ubuntu "$BACKUP_FILE"
+    chmod 644 "$BACKUP_FILE"
+
+    # Keep only last 10 backups
+    cd "$BACKUP_DIR"
+    ls -t db-*.sqlite | tail -n +11 | xargs -r rm
+    echo "✅ Database backup created"
+fi
+
 echo "📥 Deployment will create application files in ${NEW_RELEASE_DIR}"
 echo "🔗 Application should reference environment file: ${ENV_FILE}"
 echo "🗄️  Application should reference database file: ${DB_FILE}"
@@ -135,6 +151,10 @@ echo "✅ Built application detected"
 # Create permanent symlink to shared .env file
 echo "🔗 Creating symlink to shared .env file..."
 ln -sf "$ENV_FILE" .env
+
+# Create permanent symlink to shared database file
+echo "🔗 Creating symlink to shared database file..."
+ln -sf "$DB_FILE" db.sqlite
 
 # Basic smoke test - try to start the app briefly
 echo "🧪 Running smoke test..."

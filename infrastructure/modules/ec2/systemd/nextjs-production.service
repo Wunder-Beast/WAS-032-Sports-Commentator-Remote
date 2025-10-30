@@ -23,12 +23,12 @@ TimeoutStopSec=30
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/srv/www/production
+ReadWritePaths=/srv/www/production /var/log/was-032
 PrivateTmp=yes
 
 # Logging
-StandardOutput=journal
-StandardError=journal
+StandardOutput=append:/var/log/was-032/production.log
+StandardError=append:/var/log/was-032/production-error.log
 SyslogIdentifier=nextjs-production
 
 [Install]

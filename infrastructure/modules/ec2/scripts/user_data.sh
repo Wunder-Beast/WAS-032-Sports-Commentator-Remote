@@ -39,8 +39,10 @@ sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_
 systemctl restart ssh
 
 # Install bun for ubuntu user
+# Pinned to 1.2.5 due to bug in 1.2.6+ that sends duplicate Transfer-Encoding: chunked headers
+# causing 502 errors with reverse proxies. See: https://github.com/oven-sh/bun/issues/21201
 echo "Installing bun..."
-sudo -u ubuntu bash -c 'curl -fsSL https://bun.sh/install | bash'
+sudo -u ubuntu bash -c 'curl -fsSL https://bun.sh/install | bash -s "bun-v1.2.5"'
 
 # Add bun to PATH for all users via profile.d
 cat > /etc/profile.d/bun.sh << 'EOF'

@@ -23,12 +23,12 @@ TimeoutStopSec=30
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/srv/www/staging
+ReadWritePaths=/srv/www/staging /var/log/was-032
 PrivateTmp=yes
 
 # Logging
-StandardOutput=journal
-StandardError=journal
+StandardOutput=append:/var/log/was-032/staging.log
+StandardError=append:/var/log/was-032/staging-error.log
 SyslogIdentifier=nextjs-staging
 
 [Install]

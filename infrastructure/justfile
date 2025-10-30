@@ -4,7 +4,7 @@
 # Configuration - These are updated by `just init-project`
 PROJECT_DISPLAY_NAME := "WAS-032-Sports-Commentator-Remote"
 PROJECT_NAME := "was-032"
-DOMAIN_NAME := "changeme.com"
+DOMAIN_NAME := "callthegamecfp.com"
 
 # Default recipe - show available commands
 default:
@@ -118,7 +118,7 @@ generate-keys:
 # Import existing Route53 hosted zone
 import-zone:
     #!/usr/bin/env bash
-    echo "📦 Importing existing Route53 zone for changeme.com"
+    echo "📦 Importing existing Route53 zone for callthegamecfp.com"
     echo "⚠️  Make sure create_hosted_zone = false in terraform.tfvars"
     read -p "Continue? (y/N): " -n 1 -r
     echo
@@ -184,8 +184,8 @@ env:
         (if ($ses | has("SES_REGION")) then "SES_REGION=" + $ses.SES_REGION else "# SES_REGION=not_configured" end),
         "",
         "# Application URLs",
-        "NEXTAUTH_URL=https://changeme.com",
-        "NEXTAUTH_URL_STAGING=https://staging.changeme.com"
+        "NEXTAUTH_URL=https://callthegamecfp.com",
+        "NEXTAUTH_URL_STAGING=https://staging.callthegamecfp.com"
     '
 
 # Regenerate GitHub Actions secrets (convenience command)
@@ -345,7 +345,7 @@ setup-github-actions FLAG="":
     echo "" >> ../.env.staging
     echo "# Next Auth" >> ../.env.staging
     echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET_STAGING" >> ../.env.staging
-    echo "NEXTAUTH_URL=https://staging.changeme.com" >> ../.env.staging
+    echo "NEXTAUTH_URL=https://staging.callthegamecfp.com" >> ../.env.staging
     echo "" >> ../.env.staging
     echo "API_KEY=$API_KEY_STAGING" >> ../.env.staging
     echo "" >> ../.env.staging
@@ -355,7 +355,7 @@ setup-github-actions FLAG="":
         echo "EMAIL_SERVER_USER=$SMTP_USERNAME" >> ../.env.staging
         echo "EMAIL_SERVER_PASSWORD=$SMTP_PASSWORD" >> ../.env.staging
         echo "EMAIL_SERVER_PORT=$SMTP_PORT" >> ../.env.staging
-        echo "EMAIL_FROM=noreply@changeme.com" >> ../.env.staging
+        echo "EMAIL_FROM=noreply@callthegamecfp.com" >> ../.env.staging
     fi
     echo "" >> ../.env.staging
     echo "# S3 Configuration" >> ../.env.staging
@@ -380,7 +380,7 @@ setup-github-actions FLAG="":
     echo "" >> ../.env.production
     echo "# Next Auth" >> ../.env.production
     echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET_PRODUCTION" >> ../.env.production
-    echo "NEXTAUTH_URL=https://changeme.com" >> ../.env.production
+    echo "NEXTAUTH_URL=https://callthegamecfp.com" >> ../.env.production
     echo "" >> ../.env.production
     echo "API_KEY=$API_KEY_PRODUCTION" >> ../.env.production
     echo "" >> ../.env.production
@@ -390,7 +390,7 @@ setup-github-actions FLAG="":
         echo "EMAIL_SERVER_USER=$SMTP_USERNAME" >> ../.env.production
         echo "EMAIL_SERVER_PASSWORD=$SMTP_PASSWORD" >> ../.env.production
         echo "EMAIL_SERVER_PORT=$SMTP_PORT" >> ../.env.production
-        echo "EMAIL_FROM=noreply@changeme.com" >> ../.env.production
+        echo "EMAIL_FROM=noreply@callthegamecfp.com" >> ../.env.production
     fi
     echo "" >> ../.env.production
     echo "# S3 Configuration" >> ../.env.production
@@ -464,8 +464,8 @@ deploy-all: generate-keys tofu-init plan apply
     echo "🎉 Infrastructure deployed!"
     echo ""
     echo "🌐 Your domains:"
-    echo "   Production: https://changeme.com"
-    echo "   Staging: https://staging.changeme.com"  
+    echo "   Production: https://callthegamecfp.com"
+    echo "   Staging: https://staging.callthegamecfp.com"  
     echo ""
     echo "📝 Next steps:"
     echo "1. Run 'just setup-github-actions' to configure CI/CD"
@@ -479,7 +479,7 @@ status:
     echo "📊 was-032 Infrastructure Status"
     echo "=================================="
     echo "📋 Project: was-032"
-    echo "🌐 Domain: changeme.com"
+    echo "🌐 Domain: callthegamecfp.com"
     echo "📍 Region: us-east-1"
     echo ""
     
