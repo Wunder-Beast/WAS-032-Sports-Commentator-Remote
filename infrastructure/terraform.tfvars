@@ -12,7 +12,7 @@ environments = ["staging", "production"]
 # Route53 Configuration
 # If you have an existing hosted zone:
 create_hosted_zone = false
-existing_zone_id = "YOUR_ZONE_ID_HERE"    # Get from Route53 console
+existing_zone_id = "Z062818837ERR77BCHPR3"    # Get from Route53 console
 
 # If you need a new hosted zone:
 # create_hosted_zone = true

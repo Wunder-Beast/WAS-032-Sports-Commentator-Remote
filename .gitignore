@@ -43,3 +43,5 @@ db.sqlite-wal
 # terraform/opentofu
 **/.terraform/
 **/.terraform.lock.hcl
+infrastructure/keys/*
+*.tfstate
