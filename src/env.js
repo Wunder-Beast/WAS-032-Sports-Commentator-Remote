@@ -21,6 +21,10 @@ export const env = createEnv({
 		EMAIL_SERVER_PORT: z.coerce.number().min(1),
 		EMAIL_FROM: z.string(),
 		API_KEY: z.string(),
+		AWS_REGION: z.string().min(1),
+		AWS_ACCESS_KEY_ID: z.string().min(1),
+		AWS_SECRET_ACCESS_KEY: z.string().min(1),
+		S3_BUCKET_NAME: z.string().min(1),
 	},
 	client: {
 		NEXT_PUBLIC_DB_ENV: z
@@ -39,6 +43,10 @@ export const env = createEnv({
 		EMAIL_SERVER_PORT: process.env.EMAIL_SERVER_PORT,
 		EMAIL_FROM: process.env.EMAIL_FROM,
 		API_KEY: process.env.API_KEY,
+		AWS_REGION: process.env.AWS_REGION,
+		AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+		AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+		S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
 	},
 	skipValidation: !!process.env.SKIP_ENV_VALIDATION,
 	emptyStringAsUndefined: true,
