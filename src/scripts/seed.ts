@@ -3,7 +3,7 @@ import { users } from "@/server/db/schema";
 
 const seedUsers = [
 	{
-		email: "jon@jongriffith.codes",
+		email: "jon@wunderbeast.com",
 		name: "Jon",
 		role: "super" as const,
 	},
