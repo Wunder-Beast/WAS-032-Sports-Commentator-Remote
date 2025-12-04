@@ -1,17 +1,10 @@
 import { type InferSelectModel, relations, sql } from "drizzle-orm";
-import {
-	index,
-	integer,
-	primaryKey,
-	sqliteTableCreator,
-	text,
-} from "drizzle-orm/sqlite-core";
+import { integer, sqliteTableCreator, text } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
-import type { AdapterAccount } from "next-auth/adapters";
+import { isValidPhoneNumber, parsePhoneNumber } from "libphonenumber-js";
 import { ulid } from "ulid";
 import { z } from "zod";
 import { env } from "@/env";
-import { phone } from "@/lib/utils";
 
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
@@ -20,7 +13,7 @@ import { phone } from "@/lib/utils";
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
 export const createTable = sqliteTableCreator(
-	(name) => `was-032_${env.NEXT_PUBLIC_DB_ENV}_${name}`,
+	(name) => `was-026_${env.NEXT_PUBLIC_DB_ENV}_${name}`,
 );
 
 export const leads = createTable("leads", {
@@ -28,44 +21,23 @@ export const leads = createTable("leads", {
 		.notNull()
 		.primaryKey()
 		.$defaultFn(() => ulid()),
-	firstName: text("firstName").notNull(),
-	lastName: text("lastName").notNull(),
-	email: text("email").notNull().unique(),
-	phone: text("phone").unique(),
-	agePassed: integer("agePassed", { mode: "boolean" }).default(false),
-	optIn: integer("optIn", { mode: "boolean" }).default(false),
+	name: text("name"),
+	email: text("email").unique(),
+	phone: text("phone").notNull().unique(),
 	terms: integer("terms", { mode: "boolean" }).default(false),
-	play: integer("play").notNull(),
+	survey: integer("survey", { mode: "boolean" }).default(false),
+	promotions: integer("promotions", { mode: "boolean" }).default(false),
+	agePassed: integer("agePassed", { mode: "boolean" }).default(false),
+	team: text("team", { enum: ["az", "mi"] }),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.default(sql`(unixepoch())`)
 		.notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(
-		() => new Date(),
-	),
+	updatedAt: integer("updated_at", { mode: "timestamp" })
+		.default(sql`(unixepoch())`)
+		.$onUpdate(() => new Date()),
 });
 
 export type SelectLead = InferSelectModel<typeof leads>;
-
-export const insertLeadSchema = createInsertSchema(leads, {
-	firstName: z.string().min(1, { message: "First Name is required." }),
-	lastName: z.string().min(1, { message: "Last Name is required." }),
-	email: z.string().email().min(1, { message: "Email is required." }),
-	phone: phone(z.string()).optional(),
-	terms: z.boolean().refine((val) => val === true, {
-		message: "Please read and accept the terms and conditions",
-	}),
-}).refine(
-	(schema) => {
-		if (schema.agePassed) {
-			return schema.phone && schema.phone.length > 0;
-		}
-
-		return true;
-	},
-	{ message: "Phone number is required." },
-);
-
-export const insertManyLeadSchema = z.array(insertLeadSchema);
 
 export const leadsRelations = relations(leads, ({ many }) => ({
 	files: many(leadFiles),
@@ -76,108 +48,131 @@ export const leadFiles = createTable("lead_files", {
 		.notNull()
 		.primaryKey()
 		.$defaultFn(() => ulid()),
-	leadId: text("lead_id").notNull(),
-	play: integer("play").notNull(),
-	fileName: text("file_name", { length: 255 }).notNull(),
-	fileSize: integer("file_size").notNull(),
-	mimeType: text("mime_type", { length: 100 }).notNull(),
-	remoteFilePath: text("remote_path", { length: 1024 }).unique(),
-	uploadStatus: text("upload_status", {
-		enum: ["pending", "completed", "failed"],
-	})
-		.default("pending")
-		.notNull(),
+	leadId: text("lead_id")
+		.notNull()
+		.references(() => leads.id),
+	localFilePath: text("local_file_path"),
+	remoteFilePath: text("remote_file_path"),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.default(sql`(unixepoch())`)
 		.notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(
-		() => new Date(),
-	),
+	updatedAt: integer("updated_at", { mode: "timestamp" })
+		.default(sql`(unixepoch())`)
+		.$onUpdate(() => new Date()),
 });
 
 export const leadFilesRelations = relations(leadFiles, ({ one }) => ({
-	lead: one(leads, {
-		fields: [leadFiles.leadId],
-		references: [leads.id],
-	}),
+	lead: one(leads, { fields: [leadFiles.leadId], references: [leads.id] }),
 }));
 
-export const insertLeadFileSchema = createInsertSchema(leadFiles);
+export const insertLeadSchema = createInsertSchema(leads, {
+	name: z
+		.string()
+		.min(1, { message: "Name is required" })
+		.optional()
+		.or(z.literal("")),
+	email: z.string().email().optional().or(z.literal("")),
+	phone: z
+		.string()
+		.refine(
+			(value) => {
+				// Empty is not allowed since phone is required
+				if (!value || value === "") return false;
+				// Must have exactly 10 digits for US numbers
+				const digitsOnly = value.replace(/\D/g, "");
+				if (value.startsWith("+1")) {
+					return digitsOnly.length === 11; // +1 + 10 digits
+				}
+				return digitsOnly.length === 10;
+			},
+			{ message: "Phone number must be 10 digits" },
+		)
+		.refine(isValidPhoneNumber, "Please specify a valid phone number")
+		.transform((value) => parsePhoneNumber(value).number.toString()),
+	terms: z.boolean().refine((val) => val === true, {
+		message: "You must accept the terms and conditions",
+	}),
+});
+
+export const insertManyLeadSchema = z.array(insertLeadSchema);
 
 /**
- * Below this is for NextAuth / AuthJS
- * Do not modify below this
+ * Below this is for BetterAuth
+ * Schema follows BetterAuth conventions with custom role field
  */
-
-export const users = createTable("user", {
-	id: text("id", { length: 30 })
-		.notNull()
-		.primaryKey()
-		.$defaultFn(() => ulid()),
-	name: text("name"),
-	email: text("email").unique().notNull(),
-	emailVerified: integer("emailVerified", { mode: "timestamp" }),
+export const user = createTable("user", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	email: text("email").notNull().unique(),
+	emailVerified: integer("email_verified", { mode: "boolean" })
+		.default(false)
+		.notNull(),
+	image: text("image"),
+	createdAt: integer("created_at", { mode: "timestamp_ms" })
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull(),
 	role: text("role", { enum: ["user", "admin", "super"] })
 		.default("user")
 		.notNull(),
-	image: text("image"),
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
-	accounts: many(accounts),
-}));
+export const session = createTable("session", {
+	id: text("id").primaryKey(),
+	expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+	token: text("token").notNull().unique(),
+	createdAt: integer("created_at", { mode: "timestamp_ms" })
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull(),
+	ipAddress: text("ip_address"),
+	userAgent: text("user_agent"),
+	userId: text("user_id")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
+});
 
-export const accounts = createTable(
-	"account",
-	{
-		userId: text("user_id")
-			.notNull()
-			.references(() => users.id),
-		type: text("type").$type<AdapterAccount["type"]>().notNull(),
-		provider: text("provider").notNull(),
-		providerAccountId: text("provider_account_id").notNull(),
-		refresh_token: text("refresh_token"),
-		access_token: text("access_token"),
-		expires_at: integer("expires_at"),
-		token_type: text("token_type"),
-		scope: text("scope"),
-		id_token: text("id_token"),
-		session_state: text("session_state"),
-	},
-	(account) => ({
-		compoundKey: primaryKey({
-			columns: [account.provider, account.providerAccountId],
-		}),
-		userIdIdx: index("account_user_id_idx").on(account.userId),
+export const account = createTable("account", {
+	id: text("id").primaryKey(),
+	accountId: text("account_id").notNull(),
+	providerId: text("provider_id").notNull(),
+	userId: text("user_id")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
+	accessToken: text("access_token"),
+	refreshToken: text("refresh_token"),
+	idToken: text("id_token"),
+	accessTokenExpiresAt: integer("access_token_expires_at", {
+		mode: "timestamp_ms",
 	}),
-);
+	refreshTokenExpiresAt: integer("refresh_token_expires_at", {
+		mode: "timestamp_ms",
+	}),
+	scope: text("scope"),
+	password: text("password"),
+	createdAt: integer("created_at", { mode: "timestamp_ms" })
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull(),
+});
 
-export const accountsRelations = relations(accounts, ({ one }) => ({
-	user: one(users, { fields: [accounts.userId], references: [users.id] }),
-}));
-
-export const sessions = createTable(
-	"session",
-	{
-		sessionToken: text("session_token").notNull().primaryKey(),
-		userId: text("user_id")
-			.notNull()
-			.references(() => users.id),
-		expires: integer("expires", { mode: "timestamp" }).notNull(),
-	},
-	(session) => ({ userIdIdx: index("session_user_id_idx").on(session.userId) }),
-);
-
-export const sessionsRelations = relations(sessions, ({ one }) => ({
-	user: one(users, { fields: [sessions.userId], references: [users.id] }),
-}));
-
-export const verificationTokens = createTable(
-	"verification_token",
-	{
-		identifier: text("identifier").notNull(),
-		token: text("token").notNull(),
-		expires: integer("expires", { mode: "timestamp" }).notNull(),
-	},
-	(vt) => ({ compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }) }),
-);
+export const verification = createTable("verification", {
+	id: text("id").primaryKey(),
+	identifier: text("identifier").notNull(),
+	value: text("value").notNull(),
+	expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+	createdAt: integer("created_at", { mode: "timestamp_ms" })
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull(),
+});

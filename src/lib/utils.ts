@@ -9,10 +9,15 @@ export function cn(...inputs: ClassValue[]) {
 
 export function phone(schema: z.ZodString) {
 	return schema
-		.refine(
-			isValidPhoneNumber,
-			"Please specify a valid phone number (include the international prefix).",
-		)
+		.refine((value) => {
+			// Ensure we have exactly 10 digits for US numbers
+			const digitsOnly = value.replace(/\D/g, "");
+			if (value.startsWith("+1")) {
+				return digitsOnly.length === 11; // +1 + 10 digits
+			}
+			return digitsOnly.length === 10;
+		}, "Phone number must be 10 digits.")
+		.refine(isValidPhoneNumber, "Please specify a valid phone number.")
 		.transform((value) => parsePhoneNumber(value).number.toString());
 }
 

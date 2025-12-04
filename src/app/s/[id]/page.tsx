@@ -15,7 +15,7 @@ export default function SharePage() {
 
 	// const file = api.leadFiles.getLeadFileBlob.useQuery({ id: params.id ?? "" });
 
-	// Helper function to check if URL expires within a given time
+	// // Helper function to check if URL expires within a given time
 	// const urlExpiresWithin = useCallback(
 	// 	(milliseconds: number): boolean => {
 	// 		if (!file.data?.generatedAt) return false;
@@ -51,7 +51,8 @@ export default function SharePage() {
 	// };
 
 	return (
-		<main className="flex min-h-screen flex-col items-center justify-center p-4">
+		<main className="att flex min-h-screen flex-col items-center justify-center p-4">
+			<div>Placeholder content</div>
 			{/* <div className="flex w-full max-w-4xl flex-col items-center">
 				<h1 className="mb-8 font-bold text-4xl">Share Video</h1>
 

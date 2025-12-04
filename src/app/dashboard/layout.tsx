@@ -5,7 +5,7 @@ import {
 	SidebarProvider,
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { getServerAuthSession } from "@/server/auth";
+import { getServerSession } from "@/server/auth";
 import { AdminSidebar } from "./_components/adminSidebar";
 import { DynamicBreadcrumb } from "./_components/dynamicBreadcrumb";
 import { SessionWrapper } from "./_components/sessionWrapper";
@@ -18,7 +18,7 @@ export default async function AdminLayout({
 	// Get the sidebar state from cookies for persistence
 	// const cookieStore = await cookies();
 	// const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
-	const session = await getServerAuthSession();
+	const session = await getServerSession();
 
 	return (
 		<SessionWrapper session={session}>

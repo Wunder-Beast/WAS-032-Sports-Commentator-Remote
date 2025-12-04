@@ -9,14 +9,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { SelectLead } from "@/server/db/schema";
 import { api } from "@/trpc/react";
 
-export const columns: ColumnDef<SelectLead>[] = [
+type LeadWithParticipation = SelectLead & {
+	hasParticipated: boolean;
+};
+
+const columns: ColumnDef<LeadWithParticipation>[] = [
 	{
-		accessorKey: "firstName",
-		header: "First Name",
-	},
-	{
-		accessorKey: "lastName",
-		header: "Last Name",
+		accessorKey: "name",
+		header: "Name",
 	},
 	{
 		accessorKey: "phone",
@@ -27,14 +27,14 @@ export const columns: ColumnDef<SelectLead>[] = [
 		header: "Email",
 	},
 	{
-		accessorKey: "location",
-		header: "Location",
+		accessorKey: "team",
+		header: "Team",
 	},
 	{
-		accessorKey: "signupTime",
+		accessorKey: "createdAt",
 		header: "Signup Time",
 		cell: ({ row }) => {
-			const signupTime: Date | null = row.getValue("signupTime");
+			const signupTime: Date | null = row.getValue("createdAt");
 
 			if (!signupTime) {
 				return "";
@@ -44,16 +44,31 @@ export const columns: ColumnDef<SelectLead>[] = [
 		},
 	},
 	{
-		accessorKey: "agePassed",
-		header: "Age",
-	},
-	{
-		accessorKey: "optIn",
-		header: "Opt In",
-	},
-	{
 		accessorKey: "terms",
 		header: "Terms",
+		cell: ({ row }) => {
+			const terms: boolean = row.getValue("terms");
+
+			return terms ? "Y" : "N";
+		},
+	},
+	{
+		accessorKey: "survey",
+		header: "Survey",
+		cell: ({ row }) => {
+			const survey: boolean = row.getValue("survey");
+
+			return survey ? "Y" : "N";
+		},
+	},
+	{
+		accessorKey: "promotions",
+		header: "Promotions",
+		cell: ({ row }) => {
+			const promotions: boolean = row.getValue("promotions");
+
+			return promotions ? "Y" : "N";
+		},
 	},
 ];
 

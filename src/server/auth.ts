@@ -1,99 +1,117 @@
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import {
-	type DefaultSession,
-	getServerSession,
-	type NextAuthOptions,
-} from "next-auth";
-import type { Adapter } from "next-auth/adapters";
-import EmailProvider from "next-auth/providers/email";
+import { type BetterAuthPlugin, betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { desc, eq } from "drizzle-orm";
 import { env } from "@/env.js";
-import { db } from "@/server/db";
-import {
-	accounts,
-	sessions,
-	users,
-	verificationTokens,
-} from "@/server/db/schema";
+import { db } from "./db";
+import * as schema from "./db/schema";
 
-// import { users } from "@/server/db/schema";
-
-/**
- * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
- * object and keep type safety.
- *
- * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
- */
-declare module "next-auth" {
-	interface Session extends DefaultSession {
-		user: {
-			id: string;
-			role: "admin" | "user" | "super";
-		} & DefaultSession["user"];
-	}
-}
-
-/**
- * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
- *
- * @see https://next-auth.js.org/configuration/options
- */
-export const authOptions: NextAuthOptions = {
-	callbacks: {
-		async redirect({ baseUrl }) {
-			// Always redirect to dashboard after sign in
-			return `${baseUrl}/dashboard`;
-		},
-		async session({ session, user }) {
-			const dbUser = await db.query.users.findFirst({
-				where: (users, { eq }) => eq(users.email, user.email),
-			});
-
-			return {
-				...session,
-				user: {
-					...session.user,
-					id: user.id,
-					role: dbUser?.role,
+// Custom plugin to automatically promote Google OAuth users to super admin
+const superAdminPlugin = {
+	id: "super-admin",
+	hooks: {
+		after: [
+			{
+				matcher(context) {
+					return context.path?.startsWith("/callback/");
 				},
-			};
-		},
-		async signIn({ user }) {
-			return Boolean(
-				await db.query.users.findFirst({
-					// biome-ignore lint/style/noNonNullAssertion: required
-					where: (users, { eq }) => eq(users.email, user.email!),
-				}),
-			);
-		},
-	},
-	adapter: DrizzleAdapter(db, {
-		// biome-ignore lint/suspicious/noExplicitAny: drizzle
-		usersTable: users as any,
-		// biome-ignore lint/suspicious/noExplicitAny: drizzle
-		accountsTable: accounts as any,
-		// biome-ignore lint/suspicious/noExplicitAny: drizzle
-		sessionsTable: sessions as any,
-		// biome-ignore lint/suspicious/noExplicitAny: drizzle
-		verificationTokensTable: verificationTokens as any,
-	}) as Adapter,
-	providers: [
-		EmailProvider({
-			server: {
-				host: env.EMAIL_SERVER_HOST,
-				port: env.EMAIL_SERVER_PORT,
-				auth: {
-					user: env.EMAIL_SERVER_USER,
-					pass: env.EMAIL_SERVER_PASSWORD,
+				async handler(context) {
+					const url = context.request?.url || "";
+					const isGoogle =
+						url.includes("callback/google") || url.includes("google");
+
+					if (isGoogle) {
+						// Query the most recent user with a Google account
+						const recentGoogleUsers = await db
+							.select({ userId: schema.account.userId })
+							.from(schema.account)
+							.where(eq(schema.account.providerId, "google"))
+							.orderBy(desc(schema.account.createdAt))
+							.limit(1);
+
+						if (recentGoogleUsers.length > 0) {
+							const userId = recentGoogleUsers[0]?.userId;
+
+							if (userId) {
+								// Set Google OAuth users to super admin role
+								await db
+									.update(schema.user)
+									.set({ role: "super" })
+									.where(eq(schema.user.id, userId));
+							}
+						}
+					}
+
+					return context;
 				},
 			},
-			from: env.EMAIL_FROM,
-		}),
-	],
-};
+		],
+	},
+} satisfies BetterAuthPlugin;
 
-/**
- * Wrapper for `getServerSession` so that you don't need to import the `authOptions` in every file.
- *
- * @see https://next-auth.js.org/configuration/nextjs
- */
-export const getServerAuthSession = () => getServerSession(authOptions);
+export const auth = betterAuth({
+	database: drizzleAdapter(db, {
+		provider: "sqlite",
+		schema: {
+			user: schema.user,
+			session: schema.session,
+			account: schema.account,
+			verification: schema.verification,
+		},
+	}),
+	emailAndPassword: {
+		enabled: true,
+		disableSignUp: true,
+		requireEmailVerification: false,
+	},
+	socialProviders: {
+		google: {
+			clientId: env.GOOGLE_CLIENT_ID ?? "",
+			clientSecret: env.GOOGLE_CLIENT_SECRET ?? "",
+		},
+	},
+	user: {
+		additionalFields: {
+			role: {
+				type: "string",
+				required: true,
+				defaultValue: "user",
+				input: false,
+			},
+		},
+	},
+	plugins: [superAdminPlugin],
+});
+
+// Helper function to get session with user data
+export async function getServerSession(): Promise<{
+	session: {
+		id: string;
+		createdAt: Date;
+		updatedAt: Date;
+		userId: string;
+		expiresAt: Date;
+		token: string;
+		ipAddress?: string | null;
+		userAgent?: string | null;
+	};
+	user: {
+		id: string;
+		email: string;
+		emailVerified: boolean;
+		name: string;
+		image?: string | null;
+		createdAt: Date;
+		updatedAt: Date;
+		role: "user" | "admin" | "super";
+	};
+} | null> {
+	const { headers } = await import("next/headers");
+	const session = await auth.api.getSession({
+		headers: await headers(),
+	});
+
+	return session as Session;
+}
+
+// Type for the session with user data
+export type Session = Awaited<ReturnType<typeof getServerSession>>;

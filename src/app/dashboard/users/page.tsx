@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { getServerAuthSession } from "@/server/auth";
+import { getServerSession } from "@/server/auth";
 import { UsersTable } from "../_components/usersTable";
 
 export default async function UsersPage() {
-	const session = await getServerAuthSession();
+	const session = await getServerSession();
 
 	// Check if user is an admin or super admin
 	const userRole = session?.user?.role;

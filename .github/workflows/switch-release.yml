@@ -1,24 +1,24 @@
-name: Manual Deploy / Rollback
+name: Switch to Release
 
 on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy to'
+        description: "Environment to deploy to"
         required: true
         type: choice
         options:
           - staging
           - production
       commit_sha:
-        description: 'Commit SHA to deploy (leave empty to show recent commits)'
+        description: "Commit SHA to deploy (leave empty to show recent commits)"
         required: false
         type: string
       action_type:
-        description: 'Action to perform'
+        description: "Action to perform"
         required: true
         type: choice
-        default: 'deploy'
+        default: "deploy"
         options:
           - deploy
           - rollback

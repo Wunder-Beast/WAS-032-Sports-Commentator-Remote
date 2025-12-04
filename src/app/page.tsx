@@ -1,174 +1,172 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
 	SlidePanel,
 	SliderContainer,
 	SliderProvider,
 	useFullSlider,
 } from "@/components/FullSlider";
+import SvgAtt from "@/components/svg/att";
 import { Button } from "@/components/ui/button";
-import type { CarouselApi } from "@/components/ui/carousel";
-import {
-	Carousel,
-	CarouselContent,
-	CarouselDots,
-	CarouselItem,
-} from "@/components/ui/carousel";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { LeadForm } from "./_components/leadForm";
 
 function HomeContent() {
-	// const { nextSlide, previousSlide, goToSlide, currentSlide } = useFullSlider();
-	const { nextSlide, previousSlide } = useFullSlider();
-	const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-	const [selectedDesignIndex, setSelectedDesignIndex] = useState(0);
+	const isMobile = useIsMobile();
+	const { nextSlide } = useFullSlider();
 	const [agePassed, setAgePassed] = useState(false);
-
-	useEffect(() => {
-		if (!carouselApi) return;
-
-		const onSelect = () => {
-			setSelectedDesignIndex(carouselApi.selectedScrollSnap());
-		};
-
-		carouselApi.on("select", onSelect);
-		return () => {
-			carouselApi.off("select", onSelect);
-		};
-	}, [carouselApi]);
+	const [team, setTeam] = useState<"az" | "mi" | undefined>(undefined);
 
 	return (
-		<main className="att relative flex min-h-screen flex-col justify-center">
-			<div className="absolute top-[30px] right-0 left-0 flex items-center justify-center">
-				<img src="/logo-branded.png" alt="AT&T Logo" width={150} />
-			</div>
-			{/* Slide 0: Select the play */}
-			<SliderContainer className="min-h-screen">
-				<SlidePanel>
-					<div className="flex min-h-screen flex-col items-center justify-center px-[40px] pt-[120px] pb-[60px] text-center">
-						<h1 className="mb-5">Welcome</h1>
-						<p>
-							Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec
-							urna nisi, aliquam nec libero eget, condimentum.
-						</p>
-						<div className="mt-18 flex flex-col items-center gap-3">
-							<Button variant="attCobalt" size="fixed" onClick={nextSlide}>
-								New user
-							</Button>
-							<Button variant="attCobalt" size="fixed" onClick={previousSlide}>
-								Returning user
-							</Button>
-						</div>
-					</div>
-				</SlidePanel>
-				<SlidePanel>
-					<div className="flex min-h-screen flex-col items-center justify-center px-[40px] pt-[120px] pb-[60px] text-center">
-						<h1 className="mb-2">Choose your play</h1>
-						<p>
-							Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec
-							urna nisi, aliquam nec libero eget, condimentum.
-						</p>
-						<Carousel
-							opts={{
-								loop: true,
-							}}
-							setApi={setCarouselApi}
-							className="mt-8 w-full"
-						>
-							<CarouselContent>
-								{[0, 1, 2, 3].map((designIndex) => (
-									<CarouselItem key={designIndex}>
-										<div className="relative aspect-16/9 w-full overflow-hidden rounded-[20px] border-2 border-white">
-											<img
-												src={`/plays/play-${designIndex}.png`}
-												alt={`Play ${designIndex}`}
-												className="absolute inset-0 size-full object-cover"
-											/>
-											<div className="absolute right-0 bottom-0 left-0 flex h-[40px] items-center justify-center gap-1 bg-att-cobalt text-white">
-												<span>Play:</span>
-												<strong>
-													{designIndex === 0 ? "Play 1" : null}
-													{designIndex === 1 ? "Play 2" : null}
-													{designIndex === 2 ? "Play 3" : null}
-													{designIndex === 3 ? "Play 4" : null}
-												</strong>
-											</div>
-										</div>
-									</CarouselItem>
-								))}
-							</CarouselContent>
-							<CarouselDots />
-						</Carousel>
-						<div className="mt-40 flex flex-col items-center gap-5">
-							<Button variant="attCobalt" size="fixed" onClick={nextSlide}>
-								Continue
-							</Button>
-						</div>
-					</div>
-				</SlidePanel>
-				<SlidePanel>
-					<div className="flex min-h-screen flex-col items-center justify-center px-[40px] pt-[120px] pb-[60px] text-center">
-						<h1>
-							Are you at least
-							<br />
-							18 years old?
-						</h1>
-						<div className="mt-18 flex flex-col items-center gap-3">
-							<Button
-								variant="attCobalt"
-								size="fixed"
-								onClick={() => {
-									setAgePassed(true);
-									nextSlide();
-								}}
-							>
-								Yes
-							</Button>
-							<Button
-								variant="attCobalt"
-								size="fixed"
-								onClick={() => {
-									setAgePassed(false);
-									nextSlide();
-								}}
-							>
-								No
-							</Button>
-						</div>
-					</div>
-				</SlidePanel>
-				<SlidePanel>
-					<div className="flex min-h-screen flex-col items-center justify-center px-[40px] pt-[120px] pb-[60px] text-center">
-						<LeadForm agePassed={agePassed} play={selectedDesignIndex + 1} />
-					</div>
-				</SlidePanel>
-				<SlidePanel>
-					<div className="flex min-h-screen flex-col items-center justify-center px-[40px] pt-[120px] pb-[60px] text-center">
-						<h1 className="mb-2">Choose your play</h1>
-						<div className="relative aspect-16/9 w-full overflow-hidden rounded-[20px] border-2 border-white">
-							<img
-								src={`/plays/play-${selectedDesignIndex}.png`}
-								alt={`Play ${selectedDesignIndex + 1}`}
-								className="absolute inset-0 size-full object-cover"
+		<main className="att relative flex min-h-dvh flex-col justify-center">
+			{isMobile ? (
+				<SliderContainer>
+					<SlidePanel>
+						<div className="flex h-full flex-col">
+							<div
+								className="aspect-square w-full bg-center bg-cover"
+								style={{ backgroundImage: "url('/hero.jpg')" }}
 							/>
-							<div className="absolute right-0 bottom-0 left-0 flex h-[40px] items-center justify-center gap-1 bg-att-cobalt text-white">
-								<span>Play:</span>
-								<strong>
-									{selectedDesignIndex === 0 ? "Play 1" : null}
-									{selectedDesignIndex === 1 ? "Play 2" : null}
-									{selectedDesignIndex === 2 ? "Play 3" : null}
-									{selectedDesignIndex === 3 ? "Play 4" : null}
-								</strong>
+							<div className="-mt-[65px] flex flex-grow flex-col items-center rounded-t-[51px] bg-att-gradient px-5 pt-8 pb-5 text-center">
+								<div className="mb-11">
+									<SvgAtt />
+								</div>
+								<h1 className="-tracking-[2.2px] text-[44px] uppercase italic leading-[0.88]">
+									Bold Moves
+									<br />
+									Big Movements
+								</h1>
+								<p className="mt-5 px-6 text-sm">
+									Step into the broadcast booth and call the play by play for
+									college football's biggest moments
+								</p>
+								<div className="my-11 flex flex-col gap-5">
+									<Button
+										variant="attOutline"
+										size="attOutline"
+										onClick={() => {
+											nextSlide();
+										}}
+									>
+										New user
+									</Button>
+									<Button
+										variant="attOutline"
+										size="attOutline"
+										onClick={() => {
+											nextSlide();
+										}}
+									>
+										Returning user
+									</Button>
+								</div>
 							</div>
 						</div>
-						<div className="mt-40 flex flex-col items-center gap-5">
-							<Button variant="attCobalt" size="fixed" onClick={nextSlide}>
-								Continue
-							</Button>
+					</SlidePanel>
+					<SlidePanel>
+						<div className="flex min-h-screen flex-col items-center px-5 pt-10 pb-5 text-center">
+							<div className="w-[180px]">
+								<SvgAtt />
+							</div>
+							<div className="flex min-h-[400px] flex-grow flex-col items-center justify-center">
+								<h2>Choose your team</h2>
+								<div className="mt-20 flex items-center gap-5 px-[42px]">
+									<button
+										type="button"
+										onClick={() => {
+											setTeam("az");
+											nextSlide();
+										}}
+									>
+										<img src="/finger-az.png" alt="University of Arizona" />
+									</button>
+									<button
+										type="button"
+										onClick={() => {
+											setTeam("mi");
+											nextSlide();
+										}}
+									>
+										<img src="/finger-mi.png" alt="University of Michigan" />
+									</button>
+								</div>
+							</div>
 						</div>
+					</SlidePanel>
+					<SlidePanel>
+						<div className="flex min-h-screen flex-col items-center px-5 pt-10 pb-5 text-center">
+							<div className="w-[180px]">
+								<SvgAtt />
+							</div>
+							<div className="flex min-h-[400px] flex-grow flex-col items-center justify-center">
+								<h2>Are you at least 18 years old?</h2>
+								<div className="mt-20 flex flex-col items-center gap-5">
+									<Button
+										variant="attOutline"
+										size="attOutline"
+										onClick={() => {
+											setAgePassed(true);
+											nextSlide();
+										}}
+									>
+										Yes
+									</Button>
+									<Button
+										variant="attOutline"
+										size="attOutline"
+										onClick={() => {
+											setAgePassed(false);
+											nextSlide();
+										}}
+									>
+										No
+									</Button>
+								</div>
+							</div>
+						</div>
+					</SlidePanel>
+					<SlidePanel>
+						<div className="flex min-h-screen flex-col items-center px-5 pt-10 pb-5 text-center">
+							<div className="w-[180px]">
+								<SvgAtt />
+							</div>
+							<div className="mt-10 flex min-h-[400px] flex-grow flex-col items-center justify-start">
+								<div className="mt-5 flex h-full flex-grow flex-col items-center gap-4">
+									<LeadForm
+										agePassed={agePassed}
+										team={team as "az" | "mi"}
+										onSuccess={() => {
+											console.log("succeeded, calling nextSlide");
+											console.log("nextSlide function:", nextSlide);
+											nextSlide();
+											console.log("nextSlide called");
+										}}
+									/>
+								</div>
+							</div>
+						</div>
+					</SlidePanel>
+				</SliderContainer>
+			) : (
+				<div
+					className="flex h-full w-full flex-grow flex-col bg-center bg-cover pt-10"
+					style={{ backgroundImage: "url('/desktop.jpg')" }}
+				>
+					<div className="absolute top-24 flex w-full justify-center">
+						<SvgAtt />
 					</div>
-				</SlidePanel>
-			</SliderContainer>
+					<div className="flex flex-grow flex-col items-center justify-center text-center">
+						<h1 className="-tracking-[6px] mb-16 max-w-3xl font-bold text-[120px] uppercase italic leading-[0.88]">
+							This is a mobile only experience
+						</h1>
+						<p className="text-[26px]">
+							Please use your mobile device to scan the QR code at the
+							activation to register.
+						</p>
+					</div>
+				</div>
+			)}
 		</main>
 	);
 }

@@ -3,7 +3,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { CopyIcon, EditIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +26,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSession } from "@/lib/auth-client";
 import { isSuperAdmin } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -34,9 +34,11 @@ type User = {
 	id: string;
 	name: string | null;
 	email: string;
-	emailVerified: Date | null;
+	emailVerified: boolean;
 	role: "user" | "admin" | "super";
 	image: string | null;
+	createdAt: Date;
+	updatedAt: Date;
 };
 
 export function UsersTable() {
@@ -46,15 +48,18 @@ export function UsersTable() {
 	const [formData, setFormData] = useState({
 		name: "",
 		email: "",
+		password: "",
 		role: "user" as "user" | "admin" | "super",
 	});
 	const { data: session } = useSession();
 	const currentUserRole = session?.user?.role;
 	const nameFieldId = useId();
 	const emailFieldId = useId();
+	const passwordFieldId = useId();
 	const roleFieldId = useId();
 	const addNameFieldId = useId();
 	const addEmailFieldId = useId();
+	const addPasswordFieldId = useId();
 	const addRoleFieldId = useId();
 
 	const utils = api.useUtils();
@@ -73,7 +78,7 @@ export function UsersTable() {
 		onSuccess: () => {
 			toast.success("User created successfully");
 			setShowAddUser(false);
-			setFormData({ name: "", email: "", role: "user" });
+			setFormData({ name: "", email: "", password: "", role: "user" });
 			utils.user.getUsers.invalidate();
 		},
 		onError: (error) => {
@@ -125,15 +130,14 @@ export function UsersTable() {
 			},
 		},
 		{
-			accessorKey: "emailVerified",
-			header: "First Login",
+			accessorKey: "createdAt",
+			header: "Created",
 			cell: ({ row }) => {
-				const verified: Date | null = row.getValue("emailVerified");
-				if (!verified) {
-					return <Badge variant="outline">Never</Badge>;
-				}
+				const createdAt: Date = row.getValue("createdAt");
 				return (
-					<Badge variant="default">{format(verified, "MMM d, yyyy")}</Badge>
+					<Badge variant="secondary">
+						{format(new Date(createdAt), "MMM d, yyyy")}
+					</Badge>
 				);
 			},
 		},
@@ -143,7 +147,8 @@ export function UsersTable() {
 			cell: ({ row }) => {
 				const user = row.original;
 				const canEdit =
-					isSuperAdmin(currentUserRole) || !isSuperAdmin(user.role);
+					!isSuperAdmin(user.role) &&
+					(isSuperAdmin(currentUserRole) || !isSuperAdmin(user.role));
 				const canDelete =
 					isSuperAdmin(currentUserRole) || !isSuperAdmin(user.role);
 
@@ -169,6 +174,7 @@ export function UsersTable() {
 									setFormData({
 										name: user.name || "",
 										email: user.email,
+										password: "",
 										role: user.role,
 									});
 								}}
@@ -210,7 +216,12 @@ export function UsersTable() {
 						<div className="flex items-center justify-end">
 							<Button
 								onClick={() => {
-									setFormData({ name: "", email: "", role: "user" });
+									setFormData({
+										name: "",
+										email: "",
+										password: "",
+										role: "user",
+									});
 									setShowAddUser(true);
 								}}
 								variant="default"
@@ -263,6 +274,21 @@ export function UsersTable() {
 							/>
 						</div>
 						<div className="grid grid-cols-4 items-center gap-4">
+							<Label htmlFor={passwordFieldId} className="text-right">
+								Password
+							</Label>
+							<Input
+								id={passwordFieldId}
+								type="password"
+								value={formData.password}
+								onChange={(e) =>
+									setFormData({ ...formData, password: e.target.value })
+								}
+								className="col-span-3"
+								placeholder="Leave blank to keep current password"
+							/>
+						</div>
+						<div className="grid grid-cols-4 items-center gap-4">
 							<Label htmlFor={roleFieldId} className="text-right">
 								Role
 							</Label>
@@ -296,6 +322,7 @@ export function UsersTable() {
 										id: editingUser.id,
 										name: formData.name,
 										role: formData.role,
+										...(formData.password && { password: formData.password }),
 									});
 								}
 							}}
@@ -376,6 +403,21 @@ export function UsersTable() {
 							/>
 						</div>
 						<div className="grid grid-cols-4 items-center gap-4">
+							<Label htmlFor={addPasswordFieldId} className="text-right">
+								Password
+							</Label>
+							<Input
+								id={addPasswordFieldId}
+								type="password"
+								value={formData.password}
+								onChange={(e) =>
+									setFormData({ ...formData, password: e.target.value })
+								}
+								className="col-span-3"
+								placeholder="Enter password"
+							/>
+						</div>
+						<div className="grid grid-cols-4 items-center gap-4">
 							<Label htmlFor={addRoleFieldId} className="text-right">
 								Role
 							</Label>
@@ -407,11 +449,15 @@ export function UsersTable() {
 								createUser.mutate({
 									name: formData.name,
 									email: formData.email,
+									password: formData.password,
 									role: formData.role,
 								});
 							}}
 							disabled={
-								createUser.isPending || !formData.name || !formData.email
+								createUser.isPending ||
+								!formData.name ||
+								!formData.email ||
+								!formData.password
 							}
 						>
 							{createUser.isPending ? "Creating..." : "Create User"}

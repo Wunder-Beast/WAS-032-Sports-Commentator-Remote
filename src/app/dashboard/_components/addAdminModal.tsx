@@ -34,7 +34,8 @@ import { api } from "@/trpc/react";
 const createUserSchema = z.object({
 	name: z.string().min(1, "Name is required"),
 	email: z.string().email("Invalid email address"),
-	role: z.enum(["user", "admin"]),
+	password: z.string().min(8, "Password must be at least 8 characters"),
+	role: z.enum(["user", "admin", "super"]),
 });
 
 type CreateUserFormData = z.infer<typeof createUserSchema>;
@@ -50,6 +51,7 @@ export function AddAdminModal({ open, onOpenChange }: AddAdminModalProps) {
 		defaultValues: {
 			name: "",
 			email: "",
+			password: "",
 			role: "user",
 		},
 	});
@@ -106,6 +108,23 @@ export function AddAdminModal({ open, onOpenChange }: AddAdminModalProps) {
 											<Input
 												type="email"
 												placeholder="user@example.com"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="password"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Password</FormLabel>
+										<FormControl>
+											<Input
+												type="password"
+												placeholder="Enter password"
 												{...field}
 											/>
 										</FormControl>

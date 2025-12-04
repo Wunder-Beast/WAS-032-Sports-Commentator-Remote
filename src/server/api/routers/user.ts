@@ -1,9 +1,11 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { hashPassword } from "better-auth/crypto";
+import { and, eq } from "drizzle-orm";
+import { ulid } from "ulid";
 import { z } from "zod";
 import { isSuperAdmin } from "@/lib/utils";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { users } from "@/server/db/schema";
+import { account, user } from "@/server/db/schema";
 
 export const userRouter = createTRPCRouter({
 	getUsers: protectedProcedure.query(async ({ ctx }) => {
@@ -18,8 +20,8 @@ export const userRouter = createTRPCRouter({
 			});
 		}
 
-		return ctx.db.query.users.findMany({
-			orderBy: (users, { desc }) => desc(users.emailVerified),
+		return ctx.db.query.user.findMany({
+			orderBy: (user, { desc }) => desc(user.createdAt),
 		});
 	}),
 
@@ -28,6 +30,7 @@ export const userRouter = createTRPCRouter({
 			z.object({
 				name: z.string().min(1, "Name is required"),
 				email: z.string().email("Invalid email address"),
+				password: z.string().min(8, "Password must be at least 8 characters"),
 				role: z.enum(["user", "admin", "super"]),
 			}),
 		)
@@ -52,8 +55,8 @@ export const userRouter = createTRPCRouter({
 			}
 
 			// Check if user with this email already exists
-			const existingUser = await ctx.db.query.users.findFirst({
-				where: (users, { eq }) => eq(users.email, input.email),
+			const existingUser = await ctx.db.query.user.findFirst({
+				where: (user, { eq }) => eq(user.email, input.email),
 			});
 
 			if (existingUser) {
@@ -63,15 +66,29 @@ export const userRouter = createTRPCRouter({
 				});
 			}
 
-			// Create the new user with specified role
+			const userId = ulid();
+			const hashedPassword = await hashPassword(input.password);
+
+			// Create user directly in database
 			const [newUser] = await ctx.db
-				.insert(users)
+				.insert(user)
 				.values({
+					id: userId,
 					name: input.name,
 					email: input.email,
 					role: input.role,
+					emailVerified: true,
 				})
 				.returning();
+
+			// Create credential account for password login
+			await ctx.db.insert(account).values({
+				id: ulid(),
+				userId: userId,
+				providerId: "credential",
+				accountId: input.email,
+				password: hashedPassword,
+			});
 
 			return newUser;
 		}),
@@ -82,6 +99,10 @@ export const userRouter = createTRPCRouter({
 				id: z.string(),
 				name: z.string().min(1, "Name is required").optional(),
 				role: z.enum(["user", "admin", "super"]).optional(),
+				password: z
+					.string()
+					.min(8, "Password must be at least 8 characters")
+					.optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -97,8 +118,8 @@ export const userRouter = createTRPCRouter({
 			}
 
 			// Get the target user to check their role
-			const targetUser = await ctx.db.query.users.findFirst({
-				where: (users, { eq }) => eq(users.id, input.id),
+			const targetUser = await ctx.db.query.user.findFirst({
+				where: (u, { eq }) => eq(u.id, input.id),
 			});
 
 			if (!targetUser) {
@@ -132,13 +153,31 @@ export const userRouter = createTRPCRouter({
 				});
 			}
 
+			// Update password if provided
+			if (input.password) {
+				// Hash the password using BetterAuth's Argon2id implementation
+				const hashedPassword = await hashPassword(input.password);
+
+				// Update the target user's password
+				await ctx.db
+					.update(account)
+					.set({ password: hashedPassword })
+					.where(
+						and(
+							eq(account.userId, input.id),
+							eq(account.providerId, "credential"),
+						),
+					);
+			}
+
+			// Update user fields
 			const [updatedUser] = await ctx.db
-				.update(users)
+				.update(user)
 				.set({
 					...(input.name && { name: input.name }),
 					...(input.role && { role: input.role }),
 				})
-				.where(eq(users.id, input.id))
+				.where(eq(user.id, input.id))
 				.returning();
 
 			if (!updatedUser) {
@@ -166,8 +205,8 @@ export const userRouter = createTRPCRouter({
 			}
 
 			// Get the target user to check their role
-			const targetUser = await ctx.db.query.users.findFirst({
-				where: (users, { eq }) => eq(users.id, input.id),
+			const targetUser = await ctx.db.query.user.findFirst({
+				where: (u, { eq }) => eq(u.id, input.id),
 			});
 
 			if (!targetUser) {
@@ -194,8 +233,8 @@ export const userRouter = createTRPCRouter({
 			}
 
 			const [deletedUser] = await ctx.db
-				.delete(users)
-				.where(eq(users.id, input.id))
+				.delete(user)
+				.where(eq(user.id, input.id))
 				.returning();
 
 			if (!deletedUser) {

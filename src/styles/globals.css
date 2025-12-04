@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/complexity/noImportantStyles: because */
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -206,14 +207,17 @@
 		from {
 			height: 0;
 		}
+
 		to {
 			height: var(--radix-accordion-content-height);
 		}
 	}
+
 	@keyframes accordion-up {
 		from {
 			height: var(--radix-accordion-content-height);
 		}
+
 		to {
 			height: 0;
 		}
@@ -223,9 +227,11 @@
 @utility container {
 	margin-inline: auto;
 	padding-inline: 2rem;
+
 	@media (width >= --theme(--breakpoint-sm)) {
 		max-width: none;
 	}
+
 	@media (width >= 1400px) {
 		max-width: 1400px;
 	}
@@ -310,7 +316,11 @@
 	}
 
 	body {
-		@apply bg-background text-foreground font-sans;
+		@apply bg-att-blue text-foreground font-sans;
+
+		.bg-att-gradient {
+			background: linear-gradient(165deg, #009fdb 58.96%, #00388f 129.45%);
+		}
 
 		main.att,
 		.att {
@@ -326,7 +336,23 @@
 			}
 
 			h1 {
-				@apply font-black text-[40px] leading-[1.1];
+				@apply font-black text-[48px] leading-[0.88] -tracking-[1.92px] italic uppercase text-balance;
+			}
+
+			h2 {
+				@apply font-bold text-[42px] leading-[0.88] -tracking-[1.26px] italic uppercase text-balance;
+			}
+
+			h3 {
+				@apply font-bold text-[38px] leading-none -tracking-[0.57px] italic uppercase text-balance;
+			}
+
+			h4 {
+				@apply font-bold text-[48px] leading-[0.88] -tracking-[1.92px] italic uppercase text-balance;
+			}
+
+			h5 {
+				@apply font-bold text-[24px] leading-none -tracking-[0.48px] italic uppercase text-balance;
 			}
 
 			p {
@@ -367,11 +393,41 @@
 			}
 
 			input {
-				@apply !text-black !bg-white !rounded-[30px] !border-white text-[18px] !px-5 !py-5.5;
+				@apply !text-black !bg-white !rounded-[12px] !border-white text-[13px] !p-[14px] !h-[49px];
 
 				&::placeholder {
 					@apply !text-neutral-500;
 				}
+			}
+
+			[role="checkbox"] {
+				background-color: white !important;
+
+				&[data-state="checked"] {
+					background-color: white !important;
+					border-color: var(--att-blue) !important;
+					color: var(--att-blue) !important;
+				}
+			}
+
+			[role="checkbox"][data-state="checked"]
+				[data-slot="checkbox-indicator"]
+				svg {
+				stroke: var(--att-blue) !important;
+				color: var(--att-blue) !important;
+			}
+
+			[role="checkbox"][data-state="checked"]
+				[data-slot="checkbox-indicator"]
+				svg
+				path {
+				stroke: var(--att-blue) !important;
+				stroke-width: 4px !important;
+				vector-effect: non-scaling-stroke !important;
+			}
+
+			[role="checkbox"][data-state="checked"] .lucide-check {
+				stroke-width: 4px !important;
 			}
 		}
 	}

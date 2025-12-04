@@ -7,14 +7,12 @@ export const env = createEnv({
 			.enum(["development", "test", "production"])
 			.default("development"),
 		DATABASE_URL: z.string().url(),
-		NEXTAUTH_SECRET:
+		BETTER_AUTH_SECRET:
 			process.env.NODE_ENV === "production"
-				? z.string()
-				: z.string().optional(),
-		NEXTAUTH_URL: z.preprocess(
-			(str) => process.env.VERCEL_URL ?? str,
-			process.env.VERCEL ? z.string() : z.string().url(),
-		),
+				? z.string().min(32)
+				: z.string().min(32).optional(),
+		GOOGLE_CLIENT_ID: z.string().optional(),
+		GOOGLE_CLIENT_SECRET: z.string().optional(),
 		EMAIL_SERVER_HOST: z.string().min(1),
 		EMAIL_SERVER_USER: z.string().min(1),
 		EMAIL_SERVER_PASSWORD: z.string().min(1),
@@ -30,13 +28,14 @@ export const env = createEnv({
 		NEXT_PUBLIC_DB_ENV: z
 			.enum(["development", "staging", "production"])
 			.default("development"),
+		NEXT_PUBLIC_APP_URL: z.string().url(),
 	},
 	runtimeEnv: {
 		NODE_ENV: process.env.NODE_ENV,
 		DATABASE_URL: process.env.DATABASE_URL,
-		NEXT_PUBLIC_DB_ENV: process.env.NEXT_PUBLIC_DB_ENV,
-		NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-		NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+		BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+		GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+		GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
 		EMAIL_SERVER_HOST: process.env.EMAIL_SERVER_HOST,
 		EMAIL_SERVER_USER: process.env.EMAIL_SERVER_USER,
 		EMAIL_SERVER_PASSWORD: process.env.EMAIL_SERVER_PASSWORD,
@@ -47,6 +46,8 @@ export const env = createEnv({
 		AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
 		AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
 		S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
+		NEXT_PUBLIC_DB_ENV: process.env.NEXT_PUBLIC_DB_ENV,
+		NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 	},
 	skipValidation: !!process.env.SKIP_ENV_VALIDATION,
 	emptyStringAsUndefined: true,

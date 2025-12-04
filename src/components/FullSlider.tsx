@@ -124,9 +124,9 @@ export function SliderContainer({
 	}, [childrenArray.length, setTotalSlides]);
 
 	return (
-		<div className={`flex flex-grow flex-col overflow-hidden ${className}`}>
+		<div className={`h-dvh overflow-hidden ${className}`}>
 			<div
-				className="flex flex-grow transition-transform duration-500 ease-in-out"
+				className="flex h-full transition-transform duration-500 ease-in-out"
 				style={{
 					transform: `translateX(-${getSlidePosition(currentSlide)}%)`,
 				}}
@@ -144,7 +144,7 @@ interface SlidePanelProps {
 
 export function SlidePanel({ children, className = "" }: SlidePanelProps) {
 	return (
-		<div className={`w-full flex-shrink-0 flex-grow ${className}`}>
+		<div className={`h-full w-full flex-shrink-0 overflow-y-auto ${className}`}>
 			{children}
 		</div>
 	);

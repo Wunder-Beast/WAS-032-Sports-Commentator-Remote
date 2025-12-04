@@ -44,11 +44,13 @@ jobs:
         env:
           # Environment-specific variables (from production environment)
           S3_BUCKET_NAME: ${{ vars.S3_BUCKET_NAME }}
-          NEXTAUTH_URL: ${{ vars.NEXTAUTH_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
           AWS_REGION: ${{ vars.AWS_REGION }}
 
           # Environment-specific secrets
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           API_KEY: ${{ secrets.API_KEY }}
 
           # Shared infrastructure secrets
@@ -62,7 +64,7 @@ jobs:
           EMAIL_SERVER_USER: ${{ vars.EMAIL_SERVER_USER }}
           EMAIL_SERVER_PASSWORD: ${{ secrets.EMAIL_SERVER_PASSWORD }}
 
-          # SpongeBob-specific environment variables
+          # Project-specific environment variables
           NEXT_PUBLIC_DB_ENV: production
           DATABASE_URL: file:./db.sqlite
 

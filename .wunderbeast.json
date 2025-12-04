@@ -12,13 +12,7 @@
 		"lead-file-uploads",
 		"video-share"
 	],
-	"infrastructure": [
-		"route53",
-		"ec2",
-		"s3",
-		"ses",
-		"acm"
-	],
+	"infrastructure": ["route53", "ec2", "s3", "ses", "acm"],
 	"variant": "att",
 	"databaseDriver": "sqlite"
 }

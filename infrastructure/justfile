@@ -184,8 +184,8 @@ env:
         (if ($ses | has("SES_REGION")) then "SES_REGION=" + $ses.SES_REGION else "# SES_REGION=not_configured" end),
         "",
         "# Application URLs",
-        "NEXTAUTH_URL=https://callthegamecfp.com",
-        "NEXTAUTH_URL_STAGING=https://staging.callthegamecfp.com"
+        "NEXT_PUBLIC_APP_URL=https://callthegamecfp.com",
+        "NEXT_PUBLIC_APP_URL_STAGING=https://staging.callthegamecfp.com"
     '
 
 # Regenerate GitHub Actions secrets (convenience command)
@@ -275,7 +275,7 @@ setup-github-actions FLAG="":
     DOMAIN_NAME=$(tofu output -raw domain_name)
     
     echo "📋 Setting staging environment variables..."
-    gh variable set NEXTAUTH_URL --body "https://staging.${DOMAIN_NAME}" --env staging
+    gh variable set NEXT_PUBLIC_APP_URL --body "https://staging.${DOMAIN_NAME}" --env staging
     gh variable set NEXT_PUBLIC_DB_ENV --body "staging" --env staging
 
     if [ -n "$S3_STAGING" ]; then
@@ -292,7 +292,7 @@ setup-github-actions FLAG="":
     fi
     
     echo "📋 Setting production environment variables..."
-    gh variable set NEXTAUTH_URL --body "https://${DOMAIN_NAME}" --env production
+    gh variable set NEXT_PUBLIC_APP_URL --body "https://${DOMAIN_NAME}" --env production
     gh variable set NEXT_PUBLIC_DB_ENV --body "production" --env production
 
     if [ -n "$S3_PRODUCTION" ]; then
@@ -317,16 +317,16 @@ setup-github-actions FLAG="":
 
     # Generate and set secrets for each environment
     # Only generate new ones if they don't exist or if regeneration is requested
-    if [ -f ../.env.staging ] && [ "$REGENERATE_SECRETS" = false ]; then
-        echo "🔑 Using existing secrets from .env.staging and .env.production"
-        NEXTAUTH_SECRET_STAGING=$(grep "^NEXTAUTH_SECRET=" ../.env.staging | cut -d'=' -f2- | tr -d '"')
-        NEXTAUTH_SECRET_PRODUCTION=$(grep "^NEXTAUTH_SECRET=" ../.env.production | cut -d'=' -f2- | tr -d '"')
-        API_KEY_STAGING=$(grep "^API_KEY=" ../.env.staging | cut -d'=' -f2- | tr -d '"')
-        API_KEY_PRODUCTION=$(grep "^API_KEY=" ../.env.production | cut -d'=' -f2- | tr -d '"')
+    if [ -f ../.env-generated.staging ] && [ "$REGENERATE_SECRETS" = false ]; then
+        echo "🔑 Using existing secrets from .env-generated.staging and .env-generated.production"
+        BETTER_AUTH_SECRET_STAGING=$(grep "^BETTER_AUTH_SECRET=" ../.env-generated.staging | cut -d'=' -f2- | tr -d '"')
+        BETTER_AUTH_SECRET_PRODUCTION=$(grep "^BETTER_AUTH_SECRET=" ../.env-generated.production | cut -d'=' -f2- | tr -d '"')
+        API_KEY_STAGING=$(grep "^API_KEY=" ../.env-generated.staging | cut -d'=' -f2- | tr -d '"')
+        API_KEY_PRODUCTION=$(grep "^API_KEY=" ../.env-generated.production | cut -d'=' -f2- | tr -d '"')
     else
         echo "🔑 Generating new secrets for environments..."
-        NEXTAUTH_SECRET_STAGING=$(openssl rand -base64 32)
-        NEXTAUTH_SECRET_PRODUCTION=$(openssl rand -base64 32)
+        BETTER_AUTH_SECRET_STAGING=$(openssl rand -base64 32)
+        BETTER_AUTH_SECRET_PRODUCTION=$(openssl rand -base64 32)
         API_KEY_STAGING=$(openssl rand -hex 32)
         API_KEY_PRODUCTION=$(openssl rand -hex 32)
     fi
@@ -335,79 +335,89 @@ setup-github-actions FLAG="":
     echo "📝 Creating environment files..."
 
     # Staging environment file
-    echo "# Staging Environment Configuration" > ../.env.staging
-    echo "# Generated on $(date)" >> ../.env.staging
-    echo "# This file contains both variables and secrets for staging" >> ../.env.staging
-    echo "" >> ../.env.staging
-    echo "# Drizzle" >> ../.env.staging
-    echo "NEXT_PUBLIC_DB_ENV=staging" >> ../.env.staging
-    echo "DATABASE_URL=file:./db.sqlite" >> ../.env.staging
-    echo "" >> ../.env.staging
-    echo "# Next Auth" >> ../.env.staging
-    echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET_STAGING" >> ../.env.staging
-    echo "NEXTAUTH_URL=https://staging.callthegamecfp.com" >> ../.env.staging
-    echo "" >> ../.env.staging
-    echo "API_KEY=$API_KEY_STAGING" >> ../.env.staging
-    echo "" >> ../.env.staging
-    echo "# Email Configuration" >> ../.env.staging
+    echo "# Staging Environment Configuration" > ../.env-generated.staging
+    echo "# Generated on $(date)" >> ../.env-generated.staging
+    echo "# This file contains both variables and secrets for staging" >> ../.env-generated.staging
+    echo "# Copy to server as .env then delete this file" >> ../.env-generated.staging
+    echo "" >> ../.env-generated.staging
+    echo "# Drizzle" >> ../.env-generated.staging
+    echo "NEXT_PUBLIC_DB_ENV=staging" >> ../.env-generated.staging
+    echo "DATABASE_URL=file:./db.sqlite" >> ../.env-generated.staging
+    echo "" >> ../.env-generated.staging
+    echo "# BetterAuth" >> ../.env-generated.staging
+    echo "BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET_STAGING" >> ../.env-generated.staging
+    echo "NEXT_PUBLIC_APP_URL=https://staging.callthegamecfp.com" >> ../.env-generated.staging
+    echo "" >> ../.env-generated.staging
+    echo "# Google OAuth (optional)" >> ../.env-generated.staging
+    echo "GOOGLE_CLIENT_ID=" >> ../.env-generated.staging
+    echo "GOOGLE_CLIENT_SECRET=" >> ../.env-generated.staging
+    echo "" >> ../.env-generated.staging
+    echo "API_KEY=$API_KEY_STAGING" >> ../.env-generated.staging
+    echo "" >> ../.env-generated.staging
+    echo "# Email Configuration" >> ../.env-generated.staging
     if [ -n "$SMTP_HOST" ]; then
-        echo "EMAIL_SERVER_HOST=$SMTP_HOST" >> ../.env.staging
-        echo "EMAIL_SERVER_USER=$SMTP_USERNAME" >> ../.env.staging
-        echo "EMAIL_SERVER_PASSWORD=$SMTP_PASSWORD" >> ../.env.staging
-        echo "EMAIL_SERVER_PORT=$SMTP_PORT" >> ../.env.staging
-        echo "EMAIL_FROM=noreply@callthegamecfp.com" >> ../.env.staging
+        echo "EMAIL_SERVER_HOST=$SMTP_HOST" >> ../.env-generated.staging
+        echo "EMAIL_SERVER_USER=$SMTP_USERNAME" >> ../.env-generated.staging
+        echo "EMAIL_SERVER_PASSWORD=$SMTP_PASSWORD" >> ../.env-generated.staging
+        echo "EMAIL_SERVER_PORT=$SMTP_PORT" >> ../.env-generated.staging
+        echo "EMAIL_FROM=noreply@callthegamecfp.com" >> ../.env-generated.staging
     fi
-    echo "" >> ../.env.staging
-    echo "# S3 Configuration" >> ../.env.staging
+    echo "" >> ../.env-generated.staging
+    echo "# S3 Configuration" >> ../.env-generated.staging
     if [ -n "$S3_STAGING" ]; then
-        echo "AWS_ACCESS_KEY_ID=$AWS_KEY" >> ../.env.staging
-        echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET" >> ../.env.staging
-        echo "AWS_REGION=$AWS_REGION" >> ../.env.staging
-        echo "S3_BUCKET_NAME=$S3_STAGING" >> ../.env.staging
-        echo "# S3_ENDPOINT= # Leave empty for AWS S3" >> ../.env.staging
-        echo "# S3_FORCE_PATH_STYLE=false # Leave empty for AWS S3" >> ../.env.staging
+        echo "AWS_ACCESS_KEY_ID=$AWS_KEY" >> ../.env-generated.staging
+        echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET" >> ../.env-generated.staging
+        echo "AWS_REGION=$AWS_REGION" >> ../.env-generated.staging
+        echo "S3_BUCKET_NAME=$S3_STAGING" >> ../.env-generated.staging
+        echo "# S3_ENDPOINT= # Leave empty for AWS S3" >> ../.env-generated.staging
+        echo "# S3_FORCE_PATH_STYLE=false # Leave empty for AWS S3" >> ../.env-generated.staging
     fi
-    chmod 600 ../.env.staging
+    chmod 600 ../.env-generated.staging
 
     # Production environment file
-    echo "# Production Environment Configuration" > ../.env.production
-    echo "# Generated on $(date)" >> ../.env.production
-    echo "# This file contains both variables and secrets for production" >> ../.env.production
-    echo "" >> ../.env.production
-    echo "# Drizzle" >> ../.env.production
-    echo "NEXT_PUBLIC_DB_ENV=production" >> ../.env.production
-    echo "DATABASE_URL=file:./db.sqlite" >> ../.env.production
-    echo "" >> ../.env.production
-    echo "# Next Auth" >> ../.env.production
-    echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET_PRODUCTION" >> ../.env.production
-    echo "NEXTAUTH_URL=https://callthegamecfp.com" >> ../.env.production
-    echo "" >> ../.env.production
-    echo "API_KEY=$API_KEY_PRODUCTION" >> ../.env.production
-    echo "" >> ../.env.production
-    echo "# Email Configuration" >> ../.env.production
+    echo "# Production Environment Configuration" > ../.env-generated.production
+    echo "# Generated on $(date)" >> ../.env-generated.production
+    echo "# This file contains both variables and secrets for production" >> ../.env-generated.production
+    echo "# Copy to server as .env then delete this file" >> ../.env-generated.production
+    echo "" >> ../.env-generated.production
+    echo "# Drizzle" >> ../.env-generated.production
+    echo "NEXT_PUBLIC_DB_ENV=production" >> ../.env-generated.production
+    echo "DATABASE_URL=file:./db.sqlite" >> ../.env-generated.production
+    echo "" >> ../.env-generated.production
+    echo "# BetterAuth" >> ../.env-generated.production
+    echo "BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET_PRODUCTION" >> ../.env-generated.production
+    echo "NEXT_PUBLIC_APP_URL=https://callthegamecfp.com" >> ../.env-generated.production
+    echo "" >> ../.env-generated.production
+    echo "# Google OAuth (optional)" >> ../.env-generated.production
+    echo "GOOGLE_CLIENT_ID=" >> ../.env-generated.production
+    echo "GOOGLE_CLIENT_SECRET=" >> ../.env-generated.production
+    echo "" >> ../.env-generated.production
+    echo "API_KEY=$API_KEY_PRODUCTION" >> ../.env-generated.production
+    echo "" >> ../.env-generated.production
+    echo "# Email Configuration" >> ../.env-generated.production
     if [ -n "$SMTP_HOST" ]; then
-        echo "EMAIL_SERVER_HOST=$SMTP_HOST" >> ../.env.production
-        echo "EMAIL_SERVER_USER=$SMTP_USERNAME" >> ../.env.production
-        echo "EMAIL_SERVER_PASSWORD=$SMTP_PASSWORD" >> ../.env.production
-        echo "EMAIL_SERVER_PORT=$SMTP_PORT" >> ../.env.production
-        echo "EMAIL_FROM=noreply@callthegamecfp.com" >> ../.env.production
+        echo "EMAIL_SERVER_HOST=$SMTP_HOST" >> ../.env-generated.production
+        echo "EMAIL_SERVER_USER=$SMTP_USERNAME" >> ../.env-generated.production
+        echo "EMAIL_SERVER_PASSWORD=$SMTP_PASSWORD" >> ../.env-generated.production
+        echo "EMAIL_SERVER_PORT=$SMTP_PORT" >> ../.env-generated.production
+        echo "EMAIL_FROM=noreply@callthegamecfp.com" >> ../.env-generated.production
     fi
-    echo "" >> ../.env.production
-    echo "# S3 Configuration" >> ../.env.production
+    echo "" >> ../.env-generated.production
+    echo "# S3 Configuration" >> ../.env-generated.production
     if [ -n "$S3_PRODUCTION" ]; then
-        echo "AWS_ACCESS_KEY_ID=$AWS_KEY" >> ../.env.production
-        echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET" >> ../.env.production
-        echo "AWS_REGION=$AWS_REGION" >> ../.env.production
-        echo "S3_BUCKET_NAME=$S3_PRODUCTION" >> ../.env.production
-        echo "# S3_ENDPOINT= # Leave empty for AWS S3" >> ../.env.production
-        echo "# S3_FORCE_PATH_STYLE=false # Leave empty for AWS S3" >> ../.env.production
+        echo "AWS_ACCESS_KEY_ID=$AWS_KEY" >> ../.env-generated.production
+        echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET" >> ../.env-generated.production
+        echo "AWS_REGION=$AWS_REGION" >> ../.env-generated.production
+        echo "S3_BUCKET_NAME=$S3_PRODUCTION" >> ../.env-generated.production
+        echo "# S3_ENDPOINT= # Leave empty for AWS S3" >> ../.env-generated.production
+        echo "# S3_FORCE_PATH_STYLE=false # Leave empty for AWS S3" >> ../.env-generated.production
     fi
-    chmod 600 ../.env.production
+    chmod 600 ../.env-generated.production
 
-    echo "📝 Environment files created: .env.staging and .env.production (gitignored)"
-    
-    echo "$NEXTAUTH_SECRET_STAGING" | gh secret set NEXTAUTH_SECRET --env staging
-    echo "$NEXTAUTH_SECRET_PRODUCTION" | gh secret set NEXTAUTH_SECRET --env production
+    echo "📝 Environment files created: .env-generated.staging and .env-generated.production (gitignored)"
+
+    echo "$BETTER_AUTH_SECRET_STAGING" | gh secret set BETTER_AUTH_SECRET --env staging
+    echo "$BETTER_AUTH_SECRET_PRODUCTION" | gh secret set BETTER_AUTH_SECRET --env production
     echo "$API_KEY_STAGING" | gh secret set API_KEY --env staging
     echo "$API_KEY_PRODUCTION" | gh secret set API_KEY --env production
 
@@ -436,24 +446,22 @@ setup-github-actions FLAG="":
     echo "     - SSH_PRIVATE_KEY, DEPLOY_AWS_*, EC2_HOST"
     echo ""
     echo "   Staging environment:"
-    echo "     Variables: NEXTAUTH_URL, NEXT_PUBLIC_DB_ENV, EMAIL_FROM, S3_BUCKET_NAME, AWS_REGION, EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_SERVER_USER"
-    echo "     Secrets: NEXTAUTH_SECRET, DATABASE_URL, API_KEY, EMAIL_SERVER_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
+    echo "     Variables: NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_DB_ENV, EMAIL_FROM, S3_BUCKET_NAME, AWS_REGION, EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_SERVER_USER"
+    echo "     Secrets: BETTER_AUTH_SECRET, DATABASE_URL, API_KEY, EMAIL_SERVER_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
     echo ""
     echo "   Production environment:"
-    echo "     Variables: NEXTAUTH_URL, NEXT_PUBLIC_DB_ENV, EMAIL_FROM, S3_BUCKET_NAME, AWS_REGION, EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_SERVER_USER"
-    echo "     Secrets: NEXTAUTH_SECRET, DATABASE_URL, API_KEY, EMAIL_SERVER_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
+    echo "     Variables: NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_DB_ENV, EMAIL_FROM, S3_BUCKET_NAME, AWS_REGION, EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_SERVER_USER"
+    echo "     Secrets: BETTER_AUTH_SECRET, DATABASE_URL, API_KEY, EMAIL_SERVER_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
     echo ""
     echo "📁 Environment files created:"
-    echo "   - .env.staging (complete environment for staging)"
-    echo "   - .env.production (complete environment for production)"
-    echo "   These can be copied directly to the EC2 instance"
+    echo "   - .env-generated.staging (copy to server as .env)"
+    echo "   - .env-generated.production (copy to server as .env)"
     echo ""
     echo "⚠️  Optional: You may want to set additional secrets:"
     echo "   Go to: https://github.com/$(gh repo view --json owner,name --jq '.owner.login + "/" + .name')/settings/environments"
     echo ""
     echo "   Possible additions:"
-    echo "   - API keys for third-party services"
-    echo "   - OAuth client secrets"
+    echo "   - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET for Google OAuth"
     echo "   - Payment gateway keys"
     echo "   - External database URLs (to replace SQLite)"
 
