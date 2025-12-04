@@ -15,8 +15,12 @@ type LeadWithParticipation = SelectLead & {
 
 const columns: ColumnDef<LeadWithParticipation>[] = [
 	{
-		accessorKey: "name",
-		header: "Name",
+		accessorKey: "firstName",
+		header: "First Name",
+	},
+	{
+		accessorKey: "lastName",
+		header: "Last Name",
 	},
 	{
 		accessorKey: "phone",

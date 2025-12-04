@@ -25,10 +25,16 @@ export const leadRouter = createTRPCRouter({
 		.input(insertLeadSchema)
 		.mutation(async ({ ctx, input }) => {
 			// Enforce required fields for form submissions
-			if (!input.name || input.name === "") {
+			if (!input.firstName || input.firstName === "") {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: "Name is required",
+					message: "First name is required",
+				});
+			}
+			if (!input.lastName || input.lastName === "") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Last name is required",
 				});
 			}
 			if (!input.email || input.email === "") {
@@ -48,14 +54,15 @@ export const leadRouter = createTRPCRouter({
 				const result = await ctx.db
 					.insert(leads)
 					.values({
-						name: input.name,
+						firstName: input.firstName,
+						lastName: input.lastName,
 						email: input.email || null,
 						phone: input.phone,
 						agePassed: input.agePassed,
 						terms: input.terms,
 						survey: input.survey,
 						promotions: input.promotions,
-						team: input.team,
+						play: input.play,
 					})
 					.returning();
 
@@ -103,12 +110,13 @@ export const leadRouter = createTRPCRouter({
 								.update(leads)
 								.set({
 									email: input.email,
-									name: input.name,
+									firstName: input.firstName,
+									lastName: input.lastName,
 									agePassed: input.agePassed,
 									terms: input.terms,
 									survey: input.survey,
 									promotions: input.promotions,
-									team: input.team,
+									play: input.play,
 								})
 								.where(eq(leads.id, existingLead.id))
 								.returning();

@@ -23,11 +23,11 @@ import PrivacyModal from "./privacyModal";
 
 interface LeadFormProps {
 	agePassed: boolean;
-	team: "az" | "mi";
+	play: number;
 	onSuccess?: () => void;
 }
 
-export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
+export function LeadForm({ agePassed, play, onSuccess }: LeadFormProps) {
 	const utils = api.useUtils();
 	const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
@@ -55,11 +55,12 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 		mode: "onBlur",
 		reValidateMode: "onChange",
 		defaultValues: {
-			name: "",
+			firstName: "",
+			lastName: "",
 			email: "",
 			phone: "",
 			agePassed,
-			team,
+			play,
 			terms: false,
 			survey: false,
 			promotions: false,
@@ -68,14 +69,14 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 
 	useEffect(() => {
 		form.setValue("agePassed", agePassed);
-		form.setValue("team", team);
+		form.setValue("play", play);
 
 		if (!agePassed) {
 			form.setValue("email", undefined);
 			form.setValue("survey", false);
 			form.setValue("promotions", false);
 		}
-	}, [agePassed, team, form]);
+	}, [agePassed, play, form]);
 
 	function onSubmit(values: z.infer<typeof insertLeadSchema>) {
 		createLead.mutate(values);
@@ -105,11 +106,23 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 					<div className="flex flex-grow flex-col space-y-5">
 						<FormField
 							control={form.control}
-							name="name"
+							name="firstName"
 							render={({ field }) => (
 								<FormItem>
 									<FormControl>
-										<Input required placeholder="Your Name" {...field} />
+										<Input required placeholder="First Name" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="lastName"
+							render={({ field }) => (
+								<FormItem>
+									<FormControl>
+										<Input required placeholder="Last Name" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -157,8 +170,8 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 							name="terms"
 							render={({ field }) => (
 								<FormItem>
-									<div className="flex flex-col items-start gap-1 text-left">
-										<p className="-tracking-[0.3px] text-pretty text-[12px]">
+									<div className="mt-5 flex flex-col items-start gap-1 px-2 text-left">
+										<p className="text-pretty text-[12px]">
 											By marking the box below, I agree and consent that AT&T,
 											and its affiliated companies, as well as third parties
 											acting on AT&T's behalf, may process personal data from or
@@ -188,7 +201,7 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 													}}
 												/>
 											</FormControl>
-											<div className="pt-1 text-[14px] italic">Required</div>
+											<div className="pt-0.5 text-[14px] italic">Required</div>
 										</div>
 									</div>
 									<FormMessage />
@@ -201,8 +214,8 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 								name="survey"
 								render={({ field }) => (
 									<FormItem>
-										<div className="flex flex-col items-start gap-1 text-left">
-											<p className="-tracking-[0.3px] text-pretty text-[12px]">
+										<div className="flex flex-col items-start gap-1 px-2 text-left">
+											<p className="text-pretty text-[12px]">
 												By marking the box below and providing my email or
 												number on this form, I agree to receive a post-event
 												marketing survey. By providing my number on this form, I
@@ -222,7 +235,9 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 														}}
 													/>
 												</FormControl>
-												<div className="pt-1 text-[14px] italic">Optional</div>
+												<div className="pt-0.5 text-[14px] italic">
+													Optional
+												</div>
 											</div>
 										</div>
 										<FormMessage />
@@ -236,8 +251,8 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 								name="promotions"
 								render={({ field }) => (
 									<FormItem>
-										<div className="flex flex-col items-start gap-1 text-left">
-											<p className="-tracking-[0.3px] text-pretty text-[12px]">
+										<div className="flex flex-col items-start gap-1 px-2 text-left">
+											<p className="text-pretty text-[12px]">
 												By submitting your email address, you agree to receive
 												future emails from AT&T and its family of companies. We
 												will email offers and promotions about AT&T and AT&T 5G
@@ -255,7 +270,9 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 														}}
 													/>
 												</FormControl>
-												<div className="pt-1 text-[14px] italic">Optional</div>
+												<div className="pt-0.5 text-[14px] italic">
+													Optional
+												</div>
 											</div>
 										</div>
 										<FormMessage />
@@ -276,7 +293,7 @@ export function LeadForm({ agePassed, team, onSuccess }: LeadFormProps) {
 										Submitting <LoadingSpinner className="size-4" />
 									</div>
 								) : (
-									"Complete"
+									"Continue"
 								)}
 							</Button>
 						</div>

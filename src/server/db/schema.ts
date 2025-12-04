@@ -21,14 +21,15 @@ export const leads = createTable("leads", {
 		.notNull()
 		.primaryKey()
 		.$defaultFn(() => ulid()),
-	name: text("name"),
+	firstName: text("first_name"),
+	lastName: text("last_name"),
 	email: text("email").unique(),
 	phone: text("phone").notNull().unique(),
 	terms: integer("terms", { mode: "boolean" }).default(false),
 	survey: integer("survey", { mode: "boolean" }).default(false),
 	promotions: integer("promotions", { mode: "boolean" }).default(false),
 	agePassed: integer("agePassed", { mode: "boolean" }).default(false),
-	team: text("team", { enum: ["az", "mi"] }),
+	play: integer("play"),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.default(sql`(unixepoch())`)
 		.notNull(),
@@ -66,9 +67,14 @@ export const leadFilesRelations = relations(leadFiles, ({ one }) => ({
 }));
 
 export const insertLeadSchema = createInsertSchema(leads, {
-	name: z
+	firstName: z
 		.string()
-		.min(1, { message: "Name is required" })
+		.min(1, { message: "First name is required" })
+		.optional()
+		.or(z.literal("")),
+	lastName: z
+		.string()
+		.min(1, { message: "Last name is required" })
 		.optional()
 		.or(z.literal("")),
 	email: z.string().email().optional().or(z.literal("")),

@@ -336,7 +336,7 @@
 			}
 
 			h1 {
-				@apply font-black text-[48px] leading-[0.88] -tracking-[1.92px] italic uppercase text-balance;
+				@apply font-bold text-[42px] leading-[41px] italic uppercase text-balance;
 			}
 
 			h2 {
@@ -356,7 +356,7 @@
 			}
 
 			p {
-				@apply text-[18px];
+				@apply text-[16px] -tracking-[0.32px] leading-[1.25];
 			}
 
 			.privacy-content h1 {
@@ -389,11 +389,11 @@
 			}
 
 			label {
-				@apply pl-5;
+				@apply pl-[22px];
 			}
 
 			input {
-				@apply !text-black !bg-white !rounded-[12px] !border-white text-[13px] !p-[14px] !h-[49px];
+				@apply !text-black !bg-white !rounded-[30px] !border-white text-[18px] !py-[14px] !px-[22px] !h-[45px];
 
 				&::placeholder {
 					@apply !text-neutral-500;

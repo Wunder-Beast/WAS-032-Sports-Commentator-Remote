@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from "clsx";
+import { type ilike as _ilike, sql } from "drizzle-orm";
 import { isValidPhoneNumber, parsePhoneNumber } from "libphonenumber-js";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
@@ -26,4 +27,11 @@ export type ContactNumber = z.infer<typeof contactNumber>;
 
 export function isSuperAdmin(role: string | null | undefined): boolean {
 	return role === "super";
+}
+
+export function ilike(
+	column: Parameters<typeof _ilike>[0],
+	value: Parameters<typeof _ilike>[1],
+) {
+	return sql`${column} LIKE ${value} COLLATE NOCASE`;
 }

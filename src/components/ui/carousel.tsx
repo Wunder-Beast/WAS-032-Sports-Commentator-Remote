@@ -205,7 +205,7 @@ function CarouselDots({ className, ...props }: React.ComponentProps<"div">) {
 		<div
 			role="tablist"
 			className={cn(
-				"-bottom-[93px] absolute flex w-full items-center justify-center gap-5",
+				"-bottom-[76px] absolute flex w-full items-center justify-center gap-5",
 				className,
 			)}
 			{...props}
@@ -220,7 +220,7 @@ function CarouselDots({ className, ...props }: React.ComponentProps<"div">) {
 					aria-controls="carousel-item"
 					aria-label={`Slide ${index + 1}`}
 					className={cn(
-						"flex size-[60px] cursor-pointer items-center justify-center rounded-full border-3 border-white pt-2 font-black font-headline text-[40px] leading-[1.1]",
+						"flex size-[51px] cursor-pointer items-center justify-center rounded-full border-3 border-white pl-0.5 font-black font-headline text-[32px] leading-[1.1]",
 						index === selectedIndex
 							? "bg-att-cobalt text-white"
 							: "bg-transparent",
