@@ -1,5 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { desc, eq } from "drizzle-orm";
+import { isValidPhoneNumber, parsePhoneNumber } from "libphonenumber-js";
+import { z } from "zod";
 import {
 	createTRPCRouter,
 	protectedProcedure,
@@ -37,7 +39,7 @@ export const leadRouter = createTRPCRouter({
 					message: "Last name is required",
 				});
 			}
-			if (!input.email || input.email === "") {
+			if (input.agePassed && (!input.email || input.email === "")) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: "Email is required",
@@ -167,5 +169,65 @@ export const leadRouter = createTRPCRouter({
 					cause: error,
 				});
 			}
+		}),
+
+	lookupByPhone: publicProcedure
+		.input(
+			z.object({
+				phone: z
+					.string()
+					.min(1, { message: "Phone number is required" })
+					.refine(
+						(value) => {
+							if (!value || value === "") return false;
+							const digitsOnly = value.replace(/\D/g, "");
+							if (value.startsWith("+1")) {
+								return digitsOnly.length === 11;
+							}
+							return digitsOnly.length === 10;
+						},
+						{ message: "Phone number must be 10 digits" },
+					)
+					.refine(isValidPhoneNumber, "Please specify a valid phone number")
+					.transform((value) => parsePhoneNumber(value).number.toString()),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const existingLead = await ctx.db.query.leads.findFirst({
+				where: (leads, { eq }) => eq(leads.phone, input.phone),
+			});
+
+			if (!existingLead) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "User not found, please try again",
+				});
+			}
+
+			return existingLead;
+		}),
+
+	updatePlay: publicProcedure
+		.input(
+			z.object({
+				id: z.string(),
+				play: z.number(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const updated = await ctx.db
+				.update(leads)
+				.set({ play: input.play })
+				.where(eq(leads.id, input.id))
+				.returning();
+
+			if (!updated[0]) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "User not found",
+				});
+			}
+
+			return updated[0];
 		}),
 });

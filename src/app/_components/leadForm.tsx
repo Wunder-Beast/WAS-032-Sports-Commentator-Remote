@@ -13,6 +13,7 @@ import {
 	FormControl,
 	FormField,
 	FormItem,
+	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -31,25 +32,6 @@ export function LeadForm({ agePassed, play, onSuccess }: LeadFormProps) {
 	const utils = api.useUtils();
 	const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
-	const createLead = api.lead.create.useMutation({
-		onSuccess: async () => {
-			await utils.lead.invalidate();
-			form.reset();
-			onSuccess?.();
-		},
-		onError: (error) => {
-			const errorMessage =
-				error.message || "An unexpected error occurred. Please try again.";
-			toast.error("Error Signing Up", {
-				id: "sign-up",
-				description: errorMessage,
-				duration: 10000,
-				dismissible: true,
-				closeButton: true,
-			});
-		},
-	});
-
 	const form = useForm<z.infer<typeof insertLeadSchema>>({
 		resolver: zodResolver(insertLeadSchema),
 		mode: "onBlur",
@@ -64,6 +46,25 @@ export function LeadForm({ agePassed, play, onSuccess }: LeadFormProps) {
 			terms: false,
 			survey: false,
 			promotions: false,
+		},
+	});
+
+	const createLead = api.lead.create.useMutation({
+		onSuccess: () => {
+			utils.lead.invalidate().catch(() => {});
+			form.reset();
+			onSuccess?.();
+		},
+		onError: (error) => {
+			const errorMessage =
+				error.message || "An unexpected error occurred. Please try again.";
+			toast.error("Error Signing Up", {
+				id: "sign-up",
+				description: errorMessage,
+				duration: 10000,
+				dismissible: true,
+				closeButton: true,
+			});
 		},
 	});
 
@@ -109,8 +110,9 @@ export function LeadForm({ agePassed, play, onSuccess }: LeadFormProps) {
 							name="firstName"
 							render={({ field }) => (
 								<FormItem>
+									<FormLabel className="pl-5.5">First Name</FormLabel>
 									<FormControl>
-										<Input required placeholder="First Name" {...field} />
+										<Input required {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -121,22 +123,38 @@ export function LeadForm({ agePassed, play, onSuccess }: LeadFormProps) {
 							name="lastName"
 							render={({ field }) => (
 								<FormItem>
+									<FormLabel className="pl-5.5">Last Name</FormLabel>
 									<FormControl>
-										<Input required placeholder="Last Name" {...field} />
+										<Input required {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
 							)}
 						/>
+						{agePassed ? (
+							<FormField
+								control={form.control}
+								name="email"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel className="pl-5.5">Email Address</FormLabel>
+										<FormControl>
+											<Input required {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						) : null}
 						<FormField
 							control={form.control}
 							name="phone"
 							render={({ field }) => (
 								<FormItem>
+									<FormLabel className="pl-5.5">Phone Number</FormLabel>
 									<FormControl>
 										<USPhoneInput
 											required
-											placeholder="Your Phone"
 											value={field.value}
 											onValueChange={field.onChange}
 											onBlur={field.onBlur}
@@ -150,21 +168,6 @@ export function LeadForm({ agePassed, play, onSuccess }: LeadFormProps) {
 								</FormItem>
 							)}
 						/>
-						{agePassed ? (
-							<FormField
-								control={form.control}
-								name="email"
-								render={({ field }) => (
-									<FormItem>
-										<FormControl>
-											<Input required placeholder="Your Email" {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						) : null}
-
 						<FormField
 							control={form.control}
 							name="terms"

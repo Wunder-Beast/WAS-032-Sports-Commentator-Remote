@@ -17,14 +17,20 @@ import {
 	CarouselItem,
 } from "@/components/ui/carousel";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { api } from "@/trpc/react";
 import { LeadForm } from "./_components/leadForm";
+import { ReturningUserForm } from "./_components/returning-user-form";
 
 function HomeContent() {
 	const isMobile = useIsMobile();
 	const { nextSlide } = useFullSlider();
 	const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+	const [isReturning, setIsReturning] = useState(false);
+	const [returningUserId, setReturningUserId] = useState<string | null>(null);
 	const [agePassed, setAgePassed] = useState(false);
 	const [play, setPlay] = useState(0);
+
+	const updatePlay = api.lead.updatePlay.useMutation();
 
 	useEffect(() => {
 		if (!carouselApi) return;
@@ -76,7 +82,10 @@ function HomeContent() {
 										variant="attOutline"
 										size="attOutline"
 										onClick={() => {
-											nextSlide();
+											setIsReturning(true);
+											setTimeout(() => {
+												nextSlide();
+											}, 10);
 										}}
 									>
 										Returning user
@@ -85,6 +94,30 @@ function HomeContent() {
 							</div>
 						</div>
 					</SlidePanel>
+					{isReturning ? (
+						<SlidePanel>
+							<div className="relative flex min-h-screen flex-col items-center justify-center px-[30px] pt-[120px] pb-[60px] text-center">
+								<div className="absolute top-[61px] right-0 left-0 flex justify-center">
+									<SvgAtt className="w-[116px]" />
+								</div>
+								<div className="flex min-h-[400px] flex-grow flex-col items-center justify-center pt-[20vh]">
+									<h2>Welcome Back</h2>
+									<p className="mt-5 px-11">
+										Enter your phone number below and get ready to call the same
+										play, or a new clip from college football history.
+									</p>
+									<div className="mt-10 flex w-full flex-grow">
+										<ReturningUserForm
+											onSuccess={(leadId) => {
+												setReturningUserId(leadId);
+												nextSlide();
+											}}
+										/>
+									</div>
+								</div>
+							</div>
+						</SlidePanel>
+					) : null}
 					<SlidePanel>
 						<div className="relative flex min-h-screen flex-col items-center justify-center px-[30px] pt-[120px] pb-[60px] text-center">
 							<div className="absolute top-[61px] right-0 left-0 flex justify-center">
@@ -129,63 +162,81 @@ function HomeContent() {
 								<Button
 									variant="attOutline"
 									size="attOutline"
-									onClick={nextSlide}
+									onClick={() => {
+										if (returningUserId) {
+											updatePlay.mutate(
+												{ id: returningUserId, play },
+												{
+													onSuccess: () => {
+														nextSlide();
+													},
+												},
+											);
+										} else {
+											nextSlide();
+										}
+									}}
+									disabled={updatePlay.isPending}
 								>
 									Continue
 								</Button>
 							</div>
 						</div>
 					</SlidePanel>
-					<SlidePanel>
-						<div className="relative flex min-h-screen flex-col items-center justify-center px-[30px] pt-[120px] pb-[60px] text-center">
-							<div className="absolute top-[61px] right-0 left-0 flex justify-center">
-								<SvgAtt className="w-[116px]" />
-							</div>
-							<div className="flex min-h-[400px] flex-grow flex-col items-center justify-center">
-								<h2>Are you at least 18 years old?</h2>
-								<div className="mt-20 flex flex-col items-center gap-5">
-									<Button
-										variant="attOutline"
-										size="attOutline"
-										onClick={() => {
-											setAgePassed(true);
-											nextSlide();
-										}}
-									>
-										Yes
-									</Button>
-									<Button
-										variant="attOutline"
-										size="attOutline"
-										onClick={() => {
-											setAgePassed(false);
-											nextSlide();
-										}}
-									>
-										No
-									</Button>
+					{isReturning ? null : (
+						<SlidePanel>
+							<div className="relative flex min-h-screen flex-col items-center justify-center px-[30px] pt-[120px] pb-[60px] text-center">
+								<div className="absolute top-[61px] right-0 left-0 flex justify-center">
+									<SvgAtt className="w-[116px]" />
+								</div>
+								<div className="flex min-h-[400px] flex-grow flex-col items-center justify-center">
+									<h2>Are you at least 18 years old?</h2>
+									<div className="mt-20 flex flex-col items-center gap-5">
+										<Button
+											variant="attOutline"
+											size="attOutline"
+											onClick={() => {
+												setAgePassed(true);
+												nextSlide();
+											}}
+										>
+											Yes
+										</Button>
+										<Button
+											variant="attOutline"
+											size="attOutline"
+											onClick={() => {
+												setAgePassed(false);
+												nextSlide();
+											}}
+										>
+											No
+										</Button>
+									</div>
 								</div>
 							</div>
-						</div>
-					</SlidePanel>
-					<SlidePanel>
-						<div className="relative flex min-h-screen flex-col items-center justify-center px-[30px] pt-[120px] pb-[60px] text-center">
-							<div className="absolute top-[61px] right-0 left-0 flex justify-center">
-								<SvgAtt className="w-[116px]" />
-							</div>
-							<div className="mt-10 flex min-h-[400px] flex-grow flex-col items-center justify-start">
-								<div className="mt-5 flex h-full flex-grow flex-col items-center gap-4">
-									<LeadForm
-										agePassed={agePassed}
-										play={play}
-										onSuccess={() => {
-											nextSlide();
-										}}
-									/>
+						</SlidePanel>
+					)}
+					{isReturning ? null : (
+						<SlidePanel>
+							<div className="relative flex min-h-screen flex-col items-center justify-center px-[30px] pt-[120px] pb-[60px] text-center">
+								<div className="absolute top-[61px] right-0 left-0 flex justify-center">
+									<SvgAtt className="w-[116px]" />
+								</div>
+								<div className="mt-10 flex min-h-[400px] flex-grow flex-col items-center justify-start">
+									<div className="mt-5 flex h-full flex-grow flex-col items-center gap-4">
+										<LeadForm
+											agePassed={agePassed}
+											play={play}
+											onSuccess={() => {
+												nextSlide();
+											}}
+										/>
+									</div>
 								</div>
 							</div>
-						</div>
-					</SlidePanel>
+						</SlidePanel>
+					)}
 					<SlidePanel>
 						<div className="relative flex min-h-screen flex-col items-center px-[30px] pt-[163px] pb-[60px] text-center">
 							<div className="absolute top-[61px] right-0 left-0 flex justify-center">
@@ -216,12 +267,9 @@ function HomeContent() {
 					</SlidePanel>
 				</SliderContainer>
 			) : (
-				<div
-					className="flex h-full w-full flex-grow flex-col bg-center bg-cover pt-10"
-					style={{ backgroundImage: "url('/desktop.jpg')" }}
-				>
+				<div className="flex h-full w-full flex-grow flex-col bg-att-gradient pt-10">
 					<div className="absolute top-24 flex w-full justify-center">
-						<SvgAtt />
+						<SvgAtt className="w-[275px]" />
 					</div>
 					<div className="flex flex-grow flex-col items-center justify-center text-center">
 						<h1 className="-tracking-[6px] mb-16 max-w-3xl font-bold text-[120px] uppercase italic leading-[0.88]">

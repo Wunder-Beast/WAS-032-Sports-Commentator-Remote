@@ -52,6 +52,7 @@ export const leadFiles = createTable("lead_files", {
 	leadId: text("lead_id")
 		.notNull()
 		.references(() => leads.id),
+	play: integer("play"),
 	localFilePath: text("local_file_path"),
 	remoteFilePath: text("remote_file_path"),
 	createdAt: integer("created_at", { mode: "timestamp" })
@@ -80,6 +81,7 @@ export const insertLeadSchema = createInsertSchema(leads, {
 	email: z.string().email().optional().or(z.literal("")),
 	phone: z
 		.string()
+		.min(1, { message: "Phone number is required" })
 		.refine(
 			(value) => {
 				// Empty is not allowed since phone is required
