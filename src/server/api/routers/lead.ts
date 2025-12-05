@@ -53,6 +53,7 @@ export const leadRouter = createTRPCRouter({
 			}
 
 			try {
+				console.log("play", input.play);
 				const result = await ctx.db
 					.insert(leads)
 					.values({
@@ -64,9 +65,11 @@ export const leadRouter = createTRPCRouter({
 						terms: input.terms,
 						survey: input.survey,
 						promotions: input.promotions,
-						play: input.play,
+						play: (input.play ?? 0) + 1,
 					})
 					.returning();
+
+				console.log("created", result[0]);
 
 				if (!result[0]) {
 					throw new TRPCError({
@@ -91,56 +94,9 @@ export const leadRouter = createTRPCRouter({
 					rootCause.code === "SQLITE_CONSTRAINT_UNIQUE";
 
 				if (isUniqueConstraint) {
-					const errorText =
-						rootCause.message || error.cause?.message || error.message || "";
-					if (errorText.includes("email")) {
-						throw new TRPCError({
-							code: "CONFLICT",
-							message: "This email address is already registered.",
-						});
-					}
-					if (errorText.includes("phone")) {
-						// Check if existing lead has no email (from in-person event)
-						// If so, allow them to complete registration by updating the lead
-						const existingLead = await ctx.db.query.leads.findFirst({
-							where: (leads, { eq }) => eq(leads.phone, input.phone),
-						});
-
-						if (existingLead && !existingLead.email && input.email) {
-							// Update the existing lead with the email
-							const updated = await ctx.db
-								.update(leads)
-								.set({
-									email: input.email,
-									firstName: input.firstName,
-									lastName: input.lastName,
-									agePassed: input.agePassed,
-									terms: input.terms,
-									survey: input.survey,
-									promotions: input.promotions,
-									play: input.play,
-								})
-								.where(eq(leads.id, existingLead.id))
-								.returning();
-
-							if (!updated[0]) {
-								throw new TRPCError({
-									code: "INTERNAL_SERVER_ERROR",
-									message: "Failed to update lead",
-								});
-							}
-
-							return updated[0];
-						}
-
-						throw new TRPCError({
-							code: "CONFLICT",
-							message: "You're already registered, thank you!",
-						});
-					}
 					throw new TRPCError({
 						code: "CONFLICT",
-						message: "This information is already registered.",
+						message: "You're already registered, thank you!",
 					});
 				}
 
@@ -217,7 +173,7 @@ export const leadRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const updated = await ctx.db
 				.update(leads)
-				.set({ play: input.play })
+				.set({ play: input.play + 1 })
 				.where(eq(leads.id, input.id))
 				.returning();
 
