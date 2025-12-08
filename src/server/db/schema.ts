@@ -103,6 +103,7 @@ export const insertLeadSchema = createInsertSchema(leads, {
 });
 
 export const insertManyLeadSchema = z.array(insertLeadSchema);
+export const insertLeadFilesSchema = createInsertSchema(leadFiles);
 
 /**
  * Below this is for BetterAuth
