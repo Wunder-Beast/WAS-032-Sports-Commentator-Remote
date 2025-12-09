@@ -60,13 +60,13 @@ function HomeContent() {
 									<SvgAtt className="w-[116px]" />
 								</div>
 								<h1>
-									Bold Moves
+									Bold Moves.
 									<br />
-									Big Movements
+									Big Movements.
 								</h1>
 								<p className="mt-5 px-11">
 									Step into the broadcast booth and call the play by play for
-									college football's biggest moments
+									college football's biggest moments.
 								</p>
 								<div className="my-11 flex flex-col gap-5">
 									<Button
@@ -147,9 +147,9 @@ function HomeContent() {
 												<div className="-tracking-[0.12px] absolute right-0 bottom-0 left-0 flex h-[28px] items-center justify-center gap-1 bg-att-cobalt pt-1 text-[12px] text-white">
 													<span>Play:</span>
 													<strong>
-														{play === 0 ? "Play 1" : null}
-														{play === 1 ? "Play 2" : null}
-														{play === 2 ? "Play 3" : null}
+														{play === 0 ? `Ohio State vs Maryland "BBQ"` : null}
+														{play === 1 ? `Florida vs LSU "Jump pass"` : null}
+														{play === 2 ? `Ohio State vs Michigan "The hero"` : null}
 													</strong>
 												</div>
 											</div>
