@@ -10,6 +10,8 @@ const validateApiKey = (req: Request): boolean => {
 	const apiKey = authHeader?.startsWith("Bearer ")
 		? authHeader.slice(7)
 		: authHeader;
+	console.log("apiKeyHeader", apiKey);
+	console.log("apiKeyEnv", env.API_KEY);
 	return apiKey === env.API_KEY;
 };
 
