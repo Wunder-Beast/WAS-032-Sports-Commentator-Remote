@@ -139,9 +139,12 @@ function HomeContent() {
 									{[0, 1, 2].map((play) => (
 										<CarouselItem key={play}>
 											<div className="relative aspect-16/9 w-full overflow-hidden rounded-[20px] border-2 border-white">
-												<img
-													src={`/plays/play-${play}.png`}
-													alt={`Play ${play}`}
+												<video
+													src={`/plays/play-${play + 1}.mp4`}
+													autoPlay
+													loop
+													muted
+													playsInline
 													className="absolute inset-0 size-full object-cover"
 												/>
 												<div className="-tracking-[0.12px] absolute right-0 bottom-0 left-0 flex h-[28px] items-center justify-center gap-1 bg-att-cobalt pt-1 text-[12px] text-white">
@@ -149,7 +152,9 @@ function HomeContent() {
 													<strong>
 														{play === 0 ? `Ohio State vs Maryland "BBQ"` : null}
 														{play === 1 ? `Florida vs LSU "Jump pass"` : null}
-														{play === 2 ? `Ohio State vs Michigan "The hero"` : null}
+														{play === 2
+															? `Ohio State vs Michigan "The hero"`
+															: null}
 													</strong>
 												</div>
 											</div>
@@ -246,19 +251,22 @@ function HomeContent() {
 							<p className="px-7">
 								Prepare for your moment on the mic by watching the play below.
 							</p>
-							<div className="mt-10 w-full">
+							<div className="mt-16 w-full">
 								<div className="relative aspect-16/9 w-full overflow-hidden rounded-[20px] border-2 border-white">
-									<img
-										src={`/plays/play-${play}.png`}
-										alt={`Play ${play}`}
+									<video
+										src={`/plays/play-${play + 1}-full.mp4`}
+										autoPlay
+										loop
+										muted
+										playsInline
 										className="absolute inset-0 size-full object-cover"
 									/>
 									<div className="-tracking-[0.12px] absolute right-0 bottom-0 left-0 flex h-[28px] items-center justify-center gap-1 bg-att-cobalt pt-1 text-[12px] text-white">
 										<span>Play:</span>
 										<strong>
-											{play === 0 ? "Play 1" : null}
-											{play === 1 ? "Play 2" : null}
-											{play === 2 ? "Play 3" : null}
+											{play === 0 ? `Ohio State vs Maryland "BBQ"` : null}
+											{play === 1 ? `Florida vs LSU "Jump pass"` : null}
+											{play === 2 ? `Ohio State vs Michigan "The hero"` : null}
 										</strong>
 									</div>
 								</div>
