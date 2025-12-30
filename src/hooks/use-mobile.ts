@@ -8,14 +8,26 @@ export function useIsMobile() {
 	);
 
 	React.useEffect(() => {
-		const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-		const onChange = () => {
-			setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-		};
-		mql.addEventListener("change", onChange);
-		setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-		return () => mql.removeEventListener("change", onChange);
+		// Lock mobile detection on first load - don't change based on orientation
+		const initialIsMobile = window.innerWidth < MOBILE_BREAKPOINT;
+		setIsMobile(initialIsMobile);
 	}, []);
 
 	return !!isMobile;
+}
+
+export function useIsLandscape() {
+	const [isLandscape, setIsLandscape] = React.useState(false);
+
+	React.useEffect(() => {
+		const checkOrientation = () => {
+			setIsLandscape(window.innerWidth > window.innerHeight);
+		};
+
+		checkOrientation();
+		window.addEventListener("resize", checkOrientation);
+		return () => window.removeEventListener("resize", checkOrientation);
+	}, []);
+
+	return isLandscape;
 }
