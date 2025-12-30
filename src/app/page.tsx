@@ -152,7 +152,11 @@ function HomeContent() {
 					video.currentTime = 0;
 				}
 			}
-			videoRefs.current[play]?.play();
+			// Small delay to ensure video is ready after swipe settles
+			const timer = setTimeout(() => {
+				videoRefs.current[play]?.play();
+			}, 50);
+			return () => clearTimeout(timer);
 		}
 	}, [play, isOnChoosePlaySlide, showLandscapeOverlay]);
 
@@ -174,9 +178,12 @@ function HomeContent() {
 			setPlay(carouselApi.selectedScrollSnap());
 		};
 
+		// Use both select (for immediate UI update) and settle (for video playback)
 		carouselApi.on("select", onSelect);
+		carouselApi.on("settle", onSelect);
 		return () => {
 			carouselApi.off("select", onSelect);
+			carouselApi.off("settle", onSelect);
 		};
 	}, [carouselApi]);
 
@@ -213,9 +220,9 @@ function HomeContent() {
 									<SvgAtt className="w-[116px]" />
 								</div>
 								<h1>
-									Bold Moves.
+									Ready to make
 									<br />
-									Big Movements.
+									the big call?
 								</h1>
 								<p className="mt-5 px-11">
 									Step into the broadcast booth and call the play by play for
