@@ -1,7 +1,6 @@
 "use client";
 
-import { Play } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	SlidePanel,
 	SliderContainer,
@@ -32,7 +31,6 @@ function HomeContent() {
 	const [agePassed, setAgePassed] = useState(false);
 	const [play, setPlay] = useState(0);
 	const [isFullscreen, setIsFullscreen] = useState(false);
-	const [isFinalVideoPlaying, setIsFinalVideoPlaying] = useState(false);
 	const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 	const finalVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -46,8 +44,7 @@ function HomeContent() {
 			document.removeEventListener("fullscreenchange", handleFullscreenChange);
 	}, []);
 
-	const enterFullscreen = async () => {
-		setIsFinalVideoPlaying(true);
+	const enterFullscreen = useCallback(async () => {
 		const video = finalVideoRef.current;
 		if (!video) return;
 
@@ -69,16 +66,59 @@ function HomeContent() {
 			// Last resort fallback - just play inline
 			video.play();
 		}
-	};
+	}, []);
 
-	// Show landscape overlay when past first slide, in landscape, and not in fullscreen
+	const exitFullscreen = useCallback(async () => {
+		const video = finalVideoRef.current;
+		if (!video) return;
+
+		video.pause();
+
+		try {
+			if (document.fullscreenElement) {
+				await document.exitFullscreen();
+			}
+		} catch {
+			// Ignore errors
+		}
+	}, []);
+
+	// Show mobile experience: touchscreen AND (portrait OR past slide 0)
+	const showMobileExperience = isMobile && (!isLandscape || currentSlide > 0);
+
+	// Calculate slide indices
+	const choosePlaySlideIndex = isReturning ? 2 : 1;
+	const finalSlideIndex = isReturning ? 3 : 4;
+	const isOnFinalSlide = currentSlide === finalSlideIndex;
+
+	// Show landscape overlay when past first slide, in landscape, not in fullscreen, and not on final slide
 	const showLandscapeOverlay =
-		isMobile && currentSlide > 0 && isLandscape && !isFullscreen;
+		isMobile &&
+		currentSlide > 0 &&
+		isLandscape &&
+		!isFullscreen &&
+		!isOnFinalSlide;
+
+	// Handle fullscreen based on orientation on final slide
+	useEffect(() => {
+		if (!isOnFinalSlide) return;
+
+		if (isLandscape && !isFullscreen) {
+			enterFullscreen();
+		} else if (!isLandscape && isFullscreen) {
+			exitFullscreen();
+		}
+	}, [
+		isOnFinalSlide,
+		isLandscape,
+		isFullscreen,
+		enterFullscreen,
+		exitFullscreen,
+	]);
 
 	const updatePlay = api.lead.updatePlay.useMutation();
 
 	// Video playback control for carousel
-	const choosePlaySlideIndex = isReturning ? 2 : 1;
 	const isOnChoosePlaySlide = currentSlide === choosePlaySlideIndex;
 	const wasOnSlideRef = useRef(false);
 
@@ -105,7 +145,7 @@ function HomeContent() {
 
 	// When switching between carousel items while on the slide
 	useEffect(() => {
-		if (isOnChoosePlaySlide && wasOnSlideRef.current) {
+		if (isOnChoosePlaySlide && wasOnSlideRef.current && !showLandscapeOverlay) {
 			for (const video of videoRefs.current) {
 				if (video) {
 					video.pause();
@@ -114,7 +154,18 @@ function HomeContent() {
 			}
 			videoRefs.current[play]?.play();
 		}
-	}, [play, isOnChoosePlaySlide]);
+	}, [play, isOnChoosePlaySlide, showLandscapeOverlay]);
+
+	// Pause/resume video when landscape overlay shows/hides
+	useEffect(() => {
+		if (!isOnChoosePlaySlide) return;
+
+		if (showLandscapeOverlay) {
+			videoRefs.current[play]?.pause();
+		} else {
+			videoRefs.current[play]?.play();
+		}
+	}, [showLandscapeOverlay, isOnChoosePlaySlide, play]);
 
 	useEffect(() => {
 		if (!carouselApi) return;
@@ -133,32 +184,23 @@ function HomeContent() {
 		<main className="att relative flex min-h-dvh flex-col justify-center">
 			{showLandscapeOverlay && (
 				<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-att-gradient text-center">
-					<SvgAtt className="mb-10 w-[116px]" />
-					<div className="px-10">
+					<div className="absolute top-[48px]">
+						<SvgAtt className="mb-10 w-[116px]" />
+					</div>
+					<div className="mt-[48px] px-10">
 						<h2>Please rotate your device</h2>
 						<p className="mt-4">
 							Rotate your phone back to portrait mode to continue.
 						</p>
 					</div>
-					<div className="mt-10 animate-pulse">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="64"
-							height="64"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						>
-							<rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-							<path d="M12 18h.01" />
-						</svg>
-					</div>
+					<img
+						src="/rotate.png"
+						alt="Rotate device"
+						className="mt-10 w-16 animate-pulse"
+					/>
 				</div>
 			)}
-			{isMobile ? (
+			{showMobileExperience ? (
 				<SliderContainer>
 					<SlidePanel>
 						<div className="flex h-full flex-col">
@@ -380,11 +422,7 @@ function HomeContent() {
 							</p>
 							<div className="mt-5 w-full">
 								<div className="relative w-full overflow-hidden rounded-[20px] border-2 border-white">
-									<button
-										type="button"
-										onClick={enterFullscreen}
-										className="relative block aspect-16/9 w-full overflow-hidden"
-									>
+									<div className="relative block aspect-16/9 w-full overflow-hidden">
 										<video
 											ref={finalVideoRef}
 											src={`/plays/play-${play + 1}-full.mp4`}
@@ -393,14 +431,7 @@ function HomeContent() {
 											playsInline
 											className="absolute inset-0 size-full object-cover"
 										/>
-										{!isFinalVideoPlaying && (
-											<div className="absolute inset-0 flex items-center justify-center bg-black/30">
-												<div className="flex size-16 items-center justify-center rounded-full">
-													<Play className="ml-1 size-8 fill-none text-white" />
-												</div>
-											</div>
-										)}
-									</button>
+									</div>
 									<div className="-tracking-[0.12px] flex h-[29px] w-full items-center justify-center gap-1 bg-att-cobalt pt-1 text-[12px] text-white">
 										<span>Play:</span>
 										<strong>
@@ -412,8 +443,13 @@ function HomeContent() {
 								</div>
 							</div>
 							<p className="mt-5 px-5">
-								Press play and rotate your phone for fullscreen
+								Rotate your phone for full screen and sound
 							</p>
+							<img
+								src="/rotate.png"
+								alt="Rotate to play"
+								className="mt-5 w-[100px]"
+							/>
 						</div>
 					</SlidePanel>
 				</SliderContainer>
