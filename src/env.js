@@ -23,6 +23,19 @@ export const env = createEnv({
 		AWS_ACCESS_KEY_ID: z.string().min(1),
 		AWS_SECRET_ACCESS_KEY: z.string().min(1),
 		S3_BUCKET_NAME: z.string().min(1),
+		S3_ENDPOINT: z.string().optional(),
+		S3_FORCE_PATH_STYLE: z
+			.string()
+			.transform((val) => val === "true")
+			.optional(),
+		SMS_BASE_URL: z.string().url().optional(),
+		TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
+		TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
+		TWILIO_MESSAGING_SERVICE_SID: z.string().min(1).optional(),
+		ENABLE_SMS: z
+			.string()
+			.transform((val) => val === "true")
+			.optional(),
 	},
 	client: {
 		NEXT_PUBLIC_DB_ENV: z
@@ -46,6 +59,13 @@ export const env = createEnv({
 		AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
 		AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
 		S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
+		S3_ENDPOINT: process.env.S3_ENDPOINT,
+		S3_FORCE_PATH_STYLE: process.env.S3_FORCE_PATH_STYLE,
+		SMS_BASE_URL: process.env.SMS_BASE_URL,
+		TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
+		TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
+		TWILIO_MESSAGING_SERVICE_SID: process.env.TWILIO_MESSAGING_SERVICE_SID,
+		ENABLE_SMS: process.env.ENABLE_SMS,
 		NEXT_PUBLIC_DB_ENV: process.env.NEXT_PUBLIC_DB_ENV,
 		NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 	},

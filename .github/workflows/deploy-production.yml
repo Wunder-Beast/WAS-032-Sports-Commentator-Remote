@@ -64,6 +64,13 @@ jobs:
           EMAIL_SERVER_USER: ${{ vars.EMAIL_SERVER_USER }}
           EMAIL_SERVER_PASSWORD: ${{ secrets.EMAIL_SERVER_PASSWORD }}
 
+          # SMS/Twilio Configuration (optional)
+          SMS_BASE_URL: ${{ vars.SMS_BASE_URL }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_MESSAGING_SERVICE_SID: ${{ secrets.TWILIO_MESSAGING_SERVICE_SID }}
+          ENABLE_SMS: ${{ vars.ENABLE_SMS }}
+
           # Project-specific environment variables
           NEXT_PUBLIC_DB_ENV: production
           DATABASE_URL: file:./db.sqlite

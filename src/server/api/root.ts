@@ -1,4 +1,5 @@
 import { leadRouter } from "@/server/api/routers/lead";
+import { leadFilesRouter } from "@/server/api/routers/leadFiles";
 import { userRouter } from "@/server/api/routers/user";
 import { utilityRouter } from "@/server/api/routers/utility";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
@@ -10,6 +11,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
 	lead: leadRouter,
+	leadFiles: leadFilesRouter,
 	user: userRouter,
 	utility: utilityRouter,
 });

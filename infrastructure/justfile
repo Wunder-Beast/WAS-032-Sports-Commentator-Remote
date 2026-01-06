@@ -198,15 +198,18 @@ regenerate-github-secrets:
 setup-github-actions FLAG="":
     #!/usr/bin/env bash
     set -euo pipefail
-    
+
+    # Unset GITHUB_TOKEN so gh uses logged-in user instead of token
+    unset GITHUB_TOKEN
+
     echo "🔧 Setting up GitHub Actions for was-032"
     echo "=========================================="
-    
+
     if ! command -v gh &> /dev/null; then
         echo "❌ GitHub CLI not found. Install with: brew install gh"
         exit 1
     fi
-    
+
     if ! gh auth status >/dev/null 2>&1; then
         echo "❌ Not authenticated with GitHub. Run: gh auth login"
         exit 1
@@ -249,6 +252,16 @@ setup-github-actions FLAG="":
         SMTP_USERNAME=$(echo "$SES_INFO" | jq -r '.SMTP_USERNAME // empty')
         SMTP_PASSWORD=$(echo "$SES_INFO" | jq -r '.SMTP_PASSWORD // empty')
     fi
+
+    # Get Twilio configuration from local .env file
+    TWILIO_ACCOUNT_SID=""
+    TWILIO_AUTH_TOKEN=""
+    TWILIO_MESSAGING_SERVICE_SID=""
+    if [ -f "../.env" ]; then
+        TWILIO_ACCOUNT_SID=$(grep "^TWILIO_ACCOUNT_SID=" ../.env | cut -d'=' -f2- | tr -d '"' || true)
+        TWILIO_AUTH_TOKEN=$(grep "^TWILIO_AUTH_TOKEN=" ../.env | cut -d'=' -f2- | tr -d '"' || true)
+        TWILIO_MESSAGING_SERVICE_SID=$(grep "^TWILIO_MESSAGING_SERVICE_SID=" ../.env | cut -d'=' -f2- | tr -d '"' || true)
+    fi
     
     # SSH private key
     SSH_KEY=""
@@ -277,6 +290,7 @@ setup-github-actions FLAG="":
     echo "📋 Setting staging environment variables..."
     gh variable set NEXT_PUBLIC_APP_URL --body "https://staging.${DOMAIN_NAME}" --env staging
     gh variable set NEXT_PUBLIC_DB_ENV --body "staging" --env staging
+    gh variable set SMS_BASE_URL --body "https://staging.${DOMAIN_NAME}/" --env staging
 
     if [ -n "$S3_STAGING" ]; then
         gh variable set S3_BUCKET_NAME --body "$S3_STAGING" --env staging
@@ -290,10 +304,19 @@ setup-github-actions FLAG="":
         gh variable set EMAIL_SERVER_USER --body "$SMTP_USERNAME" --env staging
         echo "$SMTP_PASSWORD" | gh secret set EMAIL_SERVER_PASSWORD --env staging
     fi
-    
+
+    if [ -n "$TWILIO_ACCOUNT_SID" ]; then
+        echo "📱 Setting Twilio secrets for staging..."
+        echo "$TWILIO_ACCOUNT_SID" | gh secret set TWILIO_ACCOUNT_SID --env staging
+        echo "$TWILIO_AUTH_TOKEN" | gh secret set TWILIO_AUTH_TOKEN --env staging
+        echo "$TWILIO_MESSAGING_SERVICE_SID" | gh secret set TWILIO_MESSAGING_SERVICE_SID --env staging
+    fi
+
     echo "📋 Setting production environment variables..."
     gh variable set NEXT_PUBLIC_APP_URL --body "https://${DOMAIN_NAME}" --env production
     gh variable set NEXT_PUBLIC_DB_ENV --body "production" --env production
+    gh variable set SMS_BASE_URL --body "https://${DOMAIN_NAME}/" --env production
+    gh variable set ENABLE_SMS --body "true" --env production
 
     if [ -n "$S3_PRODUCTION" ]; then
         gh variable set S3_BUCKET_NAME --body "$S3_PRODUCTION" --env production
@@ -307,7 +330,14 @@ setup-github-actions FLAG="":
         gh variable set EMAIL_SERVER_USER --body "$SMTP_USERNAME" --env production
         echo "$SMTP_PASSWORD" | gh secret set EMAIL_SERVER_PASSWORD --env production
     fi
-    
+
+    if [ -n "$TWILIO_ACCOUNT_SID" ]; then
+        echo "📱 Setting Twilio secrets for production..."
+        echo "$TWILIO_ACCOUNT_SID" | gh secret set TWILIO_ACCOUNT_SID --env production
+        echo "$TWILIO_AUTH_TOKEN" | gh secret set TWILIO_AUTH_TOKEN --env production
+        echo "$TWILIO_MESSAGING_SERVICE_SID" | gh secret set TWILIO_MESSAGING_SERVICE_SID --env production
+    fi
+
     # Check if we should regenerate secrets
     REGENERATE_SECRETS=false
     if [ "{{FLAG}}" = "--regenerate-secrets" ]; then
@@ -372,6 +402,19 @@ setup-github-actions FLAG="":
         echo "# S3_ENDPOINT= # Leave empty for AWS S3" >> ../.env-generated.staging
         echo "# S3_FORCE_PATH_STYLE=false # Leave empty for AWS S3" >> ../.env-generated.staging
     fi
+    echo "" >> ../.env-generated.staging
+    echo "# SMS/Twilio Configuration (optional)" >> ../.env-generated.staging
+    echo "SMS_BASE_URL=https://staging.callthegamecfp.com/" >> ../.env-generated.staging
+    echo "# ENABLE_SMS=true # Uncomment to enable automatic SMS sending" >> ../.env-generated.staging
+    if [ -n "$TWILIO_ACCOUNT_SID" ]; then
+        echo "TWILIO_ACCOUNT_SID=$TWILIO_ACCOUNT_SID" >> ../.env-generated.staging
+        echo "TWILIO_AUTH_TOKEN=$TWILIO_AUTH_TOKEN" >> ../.env-generated.staging
+        echo "TWILIO_MESSAGING_SERVICE_SID=$TWILIO_MESSAGING_SERVICE_SID" >> ../.env-generated.staging
+    else
+        echo "# TWILIO_ACCOUNT_SID=your-twilio-account-sid" >> ../.env-generated.staging
+        echo "# TWILIO_AUTH_TOKEN=your-twilio-auth-token" >> ../.env-generated.staging
+        echo "# TWILIO_MESSAGING_SERVICE_SID=your-twilio-messaging-service-sid" >> ../.env-generated.staging
+    fi
     chmod 600 ../.env-generated.staging
 
     # Production environment file
@@ -412,6 +455,19 @@ setup-github-actions FLAG="":
         echo "# S3_ENDPOINT= # Leave empty for AWS S3" >> ../.env-generated.production
         echo "# S3_FORCE_PATH_STYLE=false # Leave empty for AWS S3" >> ../.env-generated.production
     fi
+    echo "" >> ../.env-generated.production
+    echo "# SMS/Twilio Configuration" >> ../.env-generated.production
+    echo "SMS_BASE_URL=https://callthegamecfp.com/" >> ../.env-generated.production
+    echo "ENABLE_SMS=true" >> ../.env-generated.production
+    if [ -n "$TWILIO_ACCOUNT_SID" ]; then
+        echo "TWILIO_ACCOUNT_SID=$TWILIO_ACCOUNT_SID" >> ../.env-generated.production
+        echo "TWILIO_AUTH_TOKEN=$TWILIO_AUTH_TOKEN" >> ../.env-generated.production
+        echo "TWILIO_MESSAGING_SERVICE_SID=$TWILIO_MESSAGING_SERVICE_SID" >> ../.env-generated.production
+    else
+        echo "# TWILIO_ACCOUNT_SID=your-twilio-account-sid" >> ../.env-generated.production
+        echo "# TWILIO_AUTH_TOKEN=your-twilio-auth-token" >> ../.env-generated.production
+        echo "# TWILIO_MESSAGING_SERVICE_SID=your-twilio-messaging-service-sid" >> ../.env-generated.production
+    fi
     chmod 600 ../.env-generated.production
 
     echo "📝 Environment files created: .env-generated.staging and .env-generated.production (gitignored)"
@@ -446,12 +502,18 @@ setup-github-actions FLAG="":
     echo "     - SSH_PRIVATE_KEY, DEPLOY_AWS_*, EC2_HOST"
     echo ""
     echo "   Staging environment:"
-    echo "     Variables: NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_DB_ENV, EMAIL_FROM, S3_BUCKET_NAME, AWS_REGION, EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_SERVER_USER"
+    echo "     Variables: NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_DB_ENV, SMS_BASE_URL, EMAIL_*, S3_BUCKET_NAME, AWS_REGION"
     echo "     Secrets: BETTER_AUTH_SECRET, DATABASE_URL, API_KEY, EMAIL_SERVER_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
+    if [ -n "$TWILIO_ACCOUNT_SID" ]; then
+        echo "     Secrets (Twilio): TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGING_SERVICE_SID"
+    fi
     echo ""
     echo "   Production environment:"
-    echo "     Variables: NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_DB_ENV, EMAIL_FROM, S3_BUCKET_NAME, AWS_REGION, EMAIL_SERVER_HOST, EMAIL_SERVER_PORT, EMAIL_SERVER_USER"
+    echo "     Variables: NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_DB_ENV, SMS_BASE_URL, ENABLE_SMS, EMAIL_*, S3_BUCKET_NAME, AWS_REGION"
     echo "     Secrets: BETTER_AUTH_SECRET, DATABASE_URL, API_KEY, EMAIL_SERVER_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
+    if [ -n "$TWILIO_ACCOUNT_SID" ]; then
+        echo "     Secrets (Twilio): TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGING_SERVICE_SID"
+    fi
     echo ""
     echo "📁 Environment files created:"
     echo "   - .env-generated.staging (copy to server as .env)"
@@ -462,6 +524,9 @@ setup-github-actions FLAG="":
     echo ""
     echo "   Possible additions:"
     echo "   - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET for Google OAuth"
+    if [ -z "$TWILIO_ACCOUNT_SID" ]; then
+        echo "   - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGING_SERVICE_SID for SMS"
+    fi
     echo "   - Payment gateway keys"
     echo "   - External database URLs (to replace SQLite)"
 

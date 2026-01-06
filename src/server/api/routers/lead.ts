@@ -2,12 +2,18 @@ import { TRPCError } from "@trpc/server";
 import { desc, eq } from "drizzle-orm";
 import { isValidPhoneNumber, parsePhoneNumber } from "libphonenumber-js";
 import { z } from "zod";
+import { env } from "@/env";
+import {
+	isTwilioConfigured,
+	sendVideoShareSms,
+	TwilioNotConfiguredError,
+} from "@/lib/sms";
 import {
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
 } from "@/server/api/trpc";
-import { insertLeadSchema, leads } from "@/server/db/schema";
+import { insertLeadSchema, leadFiles, leads } from "@/server/db/schema";
 
 export const leadRouter = createTRPCRouter({
 	getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -126,7 +132,6 @@ export const leadRouter = createTRPCRouter({
 				});
 			}
 		}),
-
 	lookupByPhone: publicProcedure
 		.input(
 			z.object({
@@ -162,7 +167,6 @@ export const leadRouter = createTRPCRouter({
 
 			return existingLead;
 		}),
-
 	updatePlay: publicProcedure
 		.input(
 			z.object({
@@ -185,5 +189,72 @@ export const leadRouter = createTRPCRouter({
 			}
 
 			return updated[0];
+		}),
+	forceSendSms: protectedProcedure
+		.input(z.object({ leadId: z.string() }))
+		.mutation(async ({ ctx, input }) => {
+			if (!isTwilioConfigured()) {
+				throw new TRPCError({
+					code: "PRECONDITION_FAILED",
+					message: "Twilio credentials are not configured",
+				});
+			}
+
+			const lead = await ctx.db.query.leads.findFirst({
+				where: eq(leads.id, input.leadId),
+			});
+
+			if (!lead) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Lead not found",
+				});
+			}
+
+			if (!lead.phone) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Lead does not have a phone number",
+				});
+			}
+
+			const latestFile = await ctx.db.query.leadFiles.findFirst({
+				where: eq(leadFiles.leadId, input.leadId),
+				orderBy: desc(leadFiles.createdAt),
+			});
+
+			if (!latestFile) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "No video files found for this lead",
+				});
+			}
+
+			if (!env.SMS_BASE_URL) {
+				throw new TRPCError({
+					code: "PRECONDITION_FAILED",
+					message: "SMS_BASE_URL is not configured",
+				});
+			}
+
+			const baseUrl = env.SMS_BASE_URL.replace(/\/$/, "");
+			const shareUrl = `${baseUrl}/s/${latestFile.id}`;
+
+			try {
+				const messageSid = await sendVideoShareSms(lead.phone, shareUrl);
+				return { success: true, messageSid };
+			} catch (error) {
+				console.error("[forceSendSms] Failed to send SMS:", error);
+				if (error instanceof TwilioNotConfiguredError) {
+					throw new TRPCError({
+						code: "PRECONDITION_FAILED",
+						message: "Twilio credentials are not configured",
+					});
+				}
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to send SMS",
+				});
+			}
 		}),
 });
