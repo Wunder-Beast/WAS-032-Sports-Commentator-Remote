@@ -1,71 +1,85 @@
 "use client";
 
-// import { useParams, useRouter } from "next/navigation";
-// import { useCallback, useEffect, useState } from "react";
-// import { api } from "@/trpc/react";
+import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { api } from "@/trpc/react";
 
 export default function SharePage() {
-	// const params = useParams<{ id: string }>();
-	// const router = useRouter();
-	// const [loaded, setLoaded] = useState(false);
+	const params = useParams<{ id: string }>();
+	const router = useRouter();
+	const [loaded, setLoaded] = useState(false);
 
-	// if (!params.id) {
-	// 	router.replace("/");
-	// }
+	const file = api.leadFiles.getPublicFileInfo.useQuery(
+		{ id: params.id ?? "" },
+		{ enabled: !!params.id },
+	);
 
-	// const file = api.leadFiles.getLeadFileBlob.useQuery({ id: params.id ?? "" });
+	// Handle file not found - redirect to home
+	useEffect(() => {
+		if (file.error?.data?.code === "NOT_FOUND") {
+			router.replace("/");
+		}
+	}, [file.error, router]);
 
-	// // Helper function to check if URL expires within a given time
-	// const urlExpiresWithin = useCallback(
-	// 	(milliseconds: number): boolean => {
-	// 		if (!file.data?.generatedAt) return false;
-	// 		const expiryTime = file.data.generatedAt + 60 * 60 * 1000; // 1 hour from generation
-	// 		return Date.now() + milliseconds >= expiryTime;
-	// 	},
-	// 	[file.data?.generatedAt],
-	// );
+	// Helper function to check if we should refresh
+	const shouldRefresh = useCallback((): boolean => {
+		if (!file.dataUpdatedAt) return false;
+		const timeSinceUpdate = Date.now() - file.dataUpdatedAt;
+		// Refresh if data is older than 50 minutes (URL expires in 1 hour)
+		return timeSinceUpdate > 50 * 60 * 1000;
+	}, [file.dataUpdatedAt]);
 
-	// // Handle file not found - redirect to home
-	// useEffect(() => {
-	// 	if (file.error?.message === "Video file not found") {
-	// 		router.replace("/");
-	// 	}
-	// }, [file.error, router]);
+	// Auto-refresh on window focus if URL might be expiring
+	useEffect(() => {
+		const handleFocus = () => {
+			if (file.data?.videoUrl && shouldRefresh()) {
+				file.refetch();
+			}
+		};
 
-	// // Auto-refresh on window focus if URL expires within 10 minutes
-	// useEffect(() => {
-	// 	const handleFocus = () => {
-	// 		if (file.data && urlExpiresWithin(10 * 60 * 1000)) {
-	// 			file.refetch();
-	// 		}
-	// 	};
+		window.addEventListener("focus", handleFocus);
+		return () => window.removeEventListener("focus", handleFocus);
+	}, [file.data, file.refetch, shouldRefresh]);
 
-	// 	window.addEventListener("focus", handleFocus);
-	// 	return () => window.removeEventListener("focus", handleFocus);
-	// }, [file.data, file.refetch, urlExpiresWithin]);
+	// Handle video load errors by refreshing the signed URL
+	const handleVideoError = () => {
+		console.log("Video failed to load, refreshing signed URL");
+		file.refetch();
+	};
 
-	// // Handle video load errors by refreshing the signed URL
-	// const handleVideoError = () => {
-	// 	console.log("Video failed to load, refreshing signed URL");
-	// 	file.refetch();
-	// };
+	// Video unavailable (rejected or pending)
+	if (file.data && file.data.moderationStatus !== "approved") {
+		return (
+			<main className="att flex min-h-screen flex-col items-center justify-center p-4">
+				<div className="flex w-full max-w-md flex-col items-center text-center">
+					<h1 className="mb-4 font-bold text-2xl">Video Unavailable</h1>
+					<p className="text-muted-foreground">
+						This video is no longer available.
+					</p>
+				</div>
+			</main>
+		);
+	}
 
 	return (
 		<main className="att flex min-h-screen flex-col items-center justify-center p-4">
-			<div>Placeholder content</div>
-			{/* <div className="flex w-full max-w-4xl flex-col items-center">
-				<h1 className="mb-8 font-bold text-4xl">Share Video</h1>
+			<div className="flex w-full max-w-4xl flex-col items-center">
+				<h1 className="mb-8 font-bold text-4xl">Your Video</h1>
 
-				<div className="relative mx-auto flex aspect-video w-full flex-col items-center justify-center bg-black">
+				<div className="relative mx-auto flex aspect-video w-full flex-col items-center justify-center rounded-lg bg-black">
 					{file.isPending && (
 						<div className="flex items-center justify-center">
 							<div className="h-8 w-8 animate-spin rounded-full border-white border-b-2" />
 						</div>
 					)}
 
-					{!file.isPending && file.data?.fileUrl && (
+					{file.error && (
+						<div className="text-white">Failed to load video</div>
+					)}
+
+					{!file.isPending && file.data?.videoUrl && (
 						<video
-							className={`${loaded ? "opacity-100" : "opacity-0"} h-full w-full transition-opacity duration-300`}
+							className={`${loaded ? "opacity-100" : "opacity-0"} h-full w-full rounded-lg transition-opacity duration-300`}
 							preload="auto"
 							loop
 							playsInline
@@ -73,27 +87,12 @@ export default function SharePage() {
 							onCanPlay={() => setLoaded(true)}
 							onError={handleVideoError}
 						>
-							<source
-								src={`${file.data.fileUrl}#t=0.1`}
-								type={`video/${file.data.fileExtension}`}
-							/>
+							<source src={`${file.data.videoUrl}#t=0.1`} type="video/mp4" />
 							Your browser does not support the video tag.
 						</video>
 					)}
 				</div>
-
-				{!file.isPending && file.data?.downloadUrl && (
-					<div className="mt-8">
-						<a
-							href={file.data.downloadUrl}
-							download
-							className="rounded bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
-						>
-							Download Video
-						</a>
-					</div>
-				)}
-			</div> */}
+			</div>
 		</main>
 	);
 }

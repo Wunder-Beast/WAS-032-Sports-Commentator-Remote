@@ -5,6 +5,7 @@ import { z } from "zod";
 import { env } from "@/env";
 import {
 	isTwilioConfigured,
+	sendVideoRejectedSms,
 	sendVideoShareSms,
 	TwilioNotConfiguredError,
 } from "@/lib/sms";
@@ -20,7 +21,9 @@ export const leadRouter = createTRPCRouter({
 		const allLeads = await ctx.db.query.leads.findMany({
 			orderBy: desc(leads.id),
 			with: {
-				files: true,
+				files: {
+					orderBy: desc(leadFiles.createdAt),
+				},
 			},
 		});
 
@@ -191,7 +194,12 @@ export const leadRouter = createTRPCRouter({
 			return updated[0];
 		}),
 	forceSendSms: protectedProcedure
-		.input(z.object({ leadId: z.string() }))
+		.input(
+			z.object({
+				leadId: z.string(),
+				fileId: z.string().optional(),
+			}),
+		)
 		.mutation(async ({ ctx, input }) => {
 			if (!isTwilioConfigured()) {
 				throw new TRPCError({
@@ -218,31 +226,55 @@ export const leadRouter = createTRPCRouter({
 				});
 			}
 
-			const latestFile = await ctx.db.query.leadFiles.findFirst({
-				where: eq(leadFiles.leadId, input.leadId),
-				orderBy: desc(leadFiles.createdAt),
-			});
+			let file;
+			if (input.fileId) {
+				file = await ctx.db.query.leadFiles.findFirst({
+					where: eq(leadFiles.id, input.fileId),
+				});
+			} else {
+				file = await ctx.db.query.leadFiles.findFirst({
+					where: eq(leadFiles.leadId, input.leadId),
+					orderBy: desc(leadFiles.createdAt),
+				});
+			}
 
-			if (!latestFile) {
+			if (!file) {
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "No video files found for this lead",
 				});
 			}
 
-			if (!env.SMS_BASE_URL) {
+			if (file.moderationStatus === "pending") {
 				throw new TRPCError({
 					code: "PRECONDITION_FAILED",
-					message: "SMS_BASE_URL is not configured",
+					message: "Video must be moderated before sending SMS",
 				});
 			}
 
-			const baseUrl = env.SMS_BASE_URL.replace(/\/$/, "");
-			const shareUrl = `${baseUrl}/s/${latestFile.id}`;
-
 			try {
-				const messageSid = await sendVideoShareSms(lead.phone, shareUrl);
-				return { success: true, messageSid };
+				let messageSid: string;
+
+				if (file.moderationStatus === "approved") {
+					if (!env.SMS_BASE_URL) {
+						throw new TRPCError({
+							code: "PRECONDITION_FAILED",
+							message: "SMS_BASE_URL is not configured",
+						});
+					}
+					const baseUrl = env.SMS_BASE_URL.replace(/\/$/, "");
+					const shareUrl = `${baseUrl}/s/${file.id}`;
+					messageSid = await sendVideoShareSms(lead.phone, shareUrl);
+				} else {
+					messageSid = await sendVideoRejectedSms(lead.phone);
+				}
+
+				await ctx.db
+					.update(leadFiles)
+					.set({ smsSentAt: new Date() })
+					.where(eq(leadFiles.id, file.id));
+
+				return { success: true, messageSid, status: file.moderationStatus };
 			} catch (error) {
 				console.error("[forceSendSms] Failed to send SMS:", error);
 				if (error instanceof TwilioNotConfiguredError) {

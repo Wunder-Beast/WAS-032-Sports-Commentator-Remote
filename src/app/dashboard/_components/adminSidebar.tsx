@@ -9,6 +9,7 @@ import {
 	HomeIcon,
 	LogOutIcon,
 	ServerIcon,
+	ShieldCheckIcon,
 	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -44,6 +45,11 @@ const mainNavItems = [
 		title: "Dashboard",
 		url: "/dashboard",
 		icon: HomeIcon,
+	},
+	{
+		title: "Moderation",
+		url: "/dashboard/moderation",
+		icon: ShieldCheckIcon,
 	},
 	{
 		title: "Users",
@@ -212,8 +218,8 @@ export function AdminSidebar() {
 						<SidebarMenu>
 							{mainNavItems
 								.filter((item) => {
-									// Show Users link to admins and super admins
-									if (item.title === "Users") {
+									// Show Users and Moderation links to admins and super admins
+									if (item.title === "Users" || item.title === "Moderation") {
 										return (
 											session?.user?.role === "admin" ||
 											isSuperAdmin(session?.user?.role)

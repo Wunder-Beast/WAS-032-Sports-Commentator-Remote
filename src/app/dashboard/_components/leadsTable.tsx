@@ -7,8 +7,6 @@ import { MessageSquare, Play } from "lucide-react";
 import { useState } from "react";
 import CsvDownloadButton from "react-json-to-csv";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/ui/data-table";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -20,6 +18,9 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
 import {
 	Dialog,
 	DialogContent,
@@ -27,12 +28,40 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { SelectLead } from "@/server/db/schema";
+import type { SelectLead, SelectLeadFile } from "@/server/db/schema";
 import { api } from "@/trpc/react";
 
-type LeadWithParticipation = SelectLead & {
+type LeadWithFiles = SelectLead & {
 	hasParticipated: boolean;
+	files: SelectLeadFile[];
 };
+
+function ModerationBadge({
+	status,
+}: {
+	status: "pending" | "approved" | "rejected";
+}) {
+	switch (status) {
+		case "pending":
+			return (
+				<Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+					Pending
+				</Badge>
+			);
+		case "approved":
+			return (
+				<Badge variant="secondary" className="bg-green-100 text-green-800">
+					Approved
+				</Badge>
+			);
+		case "rejected":
+			return (
+				<Badge variant="secondary" className="bg-red-100 text-red-800">
+					Rejected
+				</Badge>
+			);
+	}
+}
 
 function ViewVideoButton({ leadId }: { leadId: string }) {
 	const [open, setOpen] = useState(false);
@@ -77,16 +106,21 @@ function ViewVideoButton({ leadId }: { leadId: string }) {
 
 				{files.data && files.data.length > 0 && !selectedFileId && (
 					<div className="space-y-2">
-						<p className="text-sm text-muted-foreground">Select a video to view:</p>
+						<p className="text-sm text-muted-foreground">
+							Select a video to view:
+						</p>
 						<div className="grid gap-2">
 							{files.data.map((file) => (
 								<Button
 									key={file.id}
 									variant="outline"
-									className="justify-start"
+									className="justify-between"
 									onClick={() => setSelectedFileId(file.id)}
 								>
-									Play {file.play} - {format(file.createdAt, "MMM d, pp")}
+									<span>
+										Play {file.play} - {format(file.createdAt, "MMM d, pp")}
+									</span>
+									<ModerationBadge status={file.moderationStatus} />
 								</Button>
 							))}
 						</div>
@@ -127,37 +161,115 @@ function ViewVideoButton({ leadId }: { leadId: string }) {
 	);
 }
 
-function ForceSendSmsButton({ leadId, phone }: { leadId: string; phone: string }) {
+function ForceSendSmsButton({
+	leadId,
+	phone,
+	files,
+}: {
+	leadId: string;
+	phone: string;
+	files: SelectLeadFile[];
+}) {
+	const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 	const utils = api.useUtils();
+
+	const moderatedFiles = files.filter((f) => f.moderationStatus !== "pending");
+	const latestModeratedFile = moderatedFiles[0];
+
 	const sendSms = api.lead.forceSendSms.useMutation({
-		onSuccess: () => {
-			toast.success("SMS sent successfully");
+		onSuccess: (data) => {
+			const message =
+				data.status === "approved"
+					? "Share link SMS sent"
+					: "Apology SMS sent";
+			toast.success(message);
 			utils.lead.getAll.invalidate();
+			setSelectedFileId(null);
 		},
 		onError: (error) => {
 			toast.error(`Failed to send SMS: ${error.message}`);
 		},
 	});
 
+	if (moderatedFiles.length === 0) {
+		return (
+			<span className="text-muted-foreground text-sm">Pending moderation</span>
+		);
+	}
+
+	const fileToSend = selectedFileId
+		? files.find((f) => f.id === selectedFileId)
+		: latestModeratedFile;
+
+	const isApproved = fileToSend?.moderationStatus === "approved";
+	const buttonText = isApproved ? "Send Video Link" : "Send Apology";
+	const description = isApproved
+		? `This will send a text message to ${phone} with a link to their video.`
+		: `This will send an apologetic message to ${phone} explaining their video couldn't be processed.`;
+
 	return (
 		<AlertDialog>
 			<AlertDialogTrigger asChild>
 				<Button variant="outline" size="sm" disabled={sendSms.isPending}>
 					<MessageSquare className="mr-1 h-4 w-4" />
-					{sendSms.isPending ? "Sending..." : "Send SMS"}
+					{sendSms.isPending ? "Sending..." : buttonText}
 				</Button>
 			</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Send SMS?</AlertDialogTitle>
-					<AlertDialogDescription>
-						This will send a text message to <strong>{phone}</strong> with a link
-						to their video. This is a billable action.
-					</AlertDialogDescription>
+					<AlertDialogDescription>{description}</AlertDialogDescription>
 				</AlertDialogHeader>
+
+				{moderatedFiles.length > 1 && (
+					<div className="space-y-2 py-2">
+						<p className="text-sm font-medium">Select video:</p>
+						<div className="grid gap-2">
+							{moderatedFiles.map((file) => (
+								<Button
+									key={file.id}
+									variant={
+										(selectedFileId || latestModeratedFile?.id) === file.id
+											? "default"
+											: "outline"
+									}
+									size="sm"
+									className="justify-between"
+									onClick={() => setSelectedFileId(file.id)}
+								>
+									<span>
+										Play {file.play} - {format(file.createdAt, "MMM d, pp")}
+									</span>
+									<ModerationBadge status={file.moderationStatus} />
+								</Button>
+							))}
+						</div>
+					</div>
+				)}
+
+				<p className="text-sm text-muted-foreground">
+					This is a billable action.
+					{fileToSend?.smsSentAt && (
+						<>
+							{" "}
+							An SMS was already sent on{" "}
+							{format(fileToSend.smsSentAt, "MMM d, pp")}.
+						</>
+					)}
+				</p>
+
 				<AlertDialogFooter>
-					<AlertDialogCancel>Cancel</AlertDialogCancel>
-					<AlertDialogAction onClick={() => sendSms.mutate({ leadId })}>
+					<AlertDialogCancel onClick={() => setSelectedFileId(null)}>
+						Cancel
+					</AlertDialogCancel>
+					<AlertDialogAction
+						onClick={() =>
+							sendSms.mutate({
+								leadId,
+								fileId: selectedFileId || latestModeratedFile?.id,
+							})
+						}
+					>
 						Send SMS
 					</AlertDialogAction>
 				</AlertDialogFooter>
@@ -166,7 +278,7 @@ function ForceSendSmsButton({ leadId, phone }: { leadId: string; phone: string }
 	);
 }
 
-function ActionsCell({ lead }: { lead: LeadWithParticipation }) {
+function ActionsCell({ lead }: { lead: LeadWithFiles }) {
 	if (!lead.hasParticipated) {
 		return <span className="text-muted-foreground text-sm">No videos</span>;
 	}
@@ -174,12 +286,16 @@ function ActionsCell({ lead }: { lead: LeadWithParticipation }) {
 	return (
 		<div className="flex gap-2">
 			<ViewVideoButton leadId={lead.id} />
-			<ForceSendSmsButton leadId={lead.id} phone={lead.phone} />
+			<ForceSendSmsButton
+				leadId={lead.id}
+				phone={lead.phone}
+				files={lead.files}
+			/>
 		</div>
 	);
 }
 
-const columns: ColumnDef<LeadWithParticipation>[] = [
+const columns: ColumnDef<LeadWithFiles>[] = [
 	{
 		accessorKey: "firstName",
 		header: "First Name",

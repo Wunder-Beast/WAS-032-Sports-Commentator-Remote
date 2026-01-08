@@ -26,6 +26,23 @@ export function DynamicBreadcrumb() {
 		);
 	}
 
+	// For moderation page, show Dashboard > Moderation
+	if (pathname === "/dashboard/moderation") {
+		return (
+			<Breadcrumb>
+				<BreadcrumbList>
+					<BreadcrumbItem>
+						<BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+					</BreadcrumbItem>
+					<BreadcrumbSeparator />
+					<BreadcrumbItem>
+						<BreadcrumbPage>Moderation</BreadcrumbPage>
+					</BreadcrumbItem>
+				</BreadcrumbList>
+			</Breadcrumb>
+		);
+	}
+
 	// For users page, show Dashboard > Users
 	if (pathname === "/dashboard/users") {
 		return (

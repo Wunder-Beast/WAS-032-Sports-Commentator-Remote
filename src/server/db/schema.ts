@@ -13,7 +13,7 @@ import { env } from "@/env";
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
 export const createTable = sqliteTableCreator(
-	(name) => `was-026_${env.NEXT_PUBLIC_DB_ENV}_${name}`,
+	(name) => `was-032_${env.NEXT_PUBLIC_DB_ENV}_${name}`,
 );
 
 export const leads = createTable("leads", {
@@ -55,6 +55,15 @@ export const leadFiles = createTable("lead_files", {
 	play: integer("play"),
 	localFilePath: text("local_file_path"),
 	remoteFilePath: text("remote_file_path"),
+	moderationStatus: text("moderation_status", {
+		enum: ["pending", "approved", "rejected"],
+	})
+		.default("pending")
+		.notNull(),
+	moderatedAt: integer("moderated_at", { mode: "timestamp" }),
+	moderatedBy: text("moderated_by").references(() => user.id),
+	moderationNotes: text("moderation_notes"),
+	smsSentAt: integer("sms_sent_at", { mode: "timestamp" }),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.default(sql`(unixepoch())`)
 		.notNull(),
@@ -62,6 +71,8 @@ export const leadFiles = createTable("lead_files", {
 		.default(sql`(unixepoch())`)
 		.$onUpdate(() => new Date()),
 });
+
+export type SelectLeadFile = InferSelectModel<typeof leadFiles>;
 
 export const leadFilesRelations = relations(leadFiles, ({ one }) => ({
 	lead: one(leads, { fields: [leadFiles.leadId], references: [leads.id] }),
