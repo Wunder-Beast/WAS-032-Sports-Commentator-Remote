@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { skipToken } from "@tanstack/react-query";
+import { keepPreviousData, skipToken } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Check, MessageSquare, Play, X } from "lucide-react";
 import { useState } from "react";
@@ -373,13 +373,21 @@ const columns: ColumnDef<FileWithLead>[] = [
 export function ModerationQueue() {
 	const [statusFilter, setStatusFilter] = useState<ModerationStatus | undefined>("pending");
 
-	const queue = api.leadFiles.getModerationQueue.useQuery({
-		status: statusFilter,
-	});
+	const queue = api.leadFiles.getModerationQueue.useQuery(
+		{ status: statusFilter },
+		{
+			refetchInterval: 30000,
+			placeholderData: keepPreviousData,
+		},
+	);
 
-	const pendingCount = api.leadFiles.getModerationQueue.useQuery({
-		status: "pending",
-	});
+	const pendingCount = api.leadFiles.getModerationQueue.useQuery(
+		{ status: "pending" },
+		{
+			refetchInterval: 30000,
+			placeholderData: keepPreviousData,
+		},
+	);
 
 	if (queue.isPending) {
 		return (
