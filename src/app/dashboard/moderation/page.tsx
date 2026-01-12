@@ -5,9 +5,8 @@ import { ModerationQueue } from "../_components/moderationQueue";
 export default async function ModerationPage() {
 	const session = await getServerSession();
 
-	const userRole = session?.user?.role;
-	if (userRole !== "admin" && userRole !== "super") {
-		redirect("/dashboard");
+	if (!session) {
+		redirect("/sign-in");
 	}
 
 	return (
