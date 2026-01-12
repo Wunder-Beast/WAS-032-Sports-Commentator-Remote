@@ -12,7 +12,7 @@ const superAdminPlugin = {
 		after: [
 			{
 				matcher(context) {
-					return context.path?.startsWith("/callback/");
+					return context.path?.startsWith("/callback/") ?? false;
 				},
 				async handler(context) {
 					const url = context.request?.url || "";
@@ -49,6 +49,8 @@ const superAdminPlugin = {
 } satisfies BetterAuthPlugin;
 
 export const auth = betterAuth({
+	baseURL: env.NEXT_PUBLIC_APP_URL,
+	trustedOrigins: [env.NEXT_PUBLIC_APP_URL],
 	database: drizzleAdapter(db, {
 		provider: "sqlite",
 		schema: {
@@ -67,6 +69,7 @@ export const auth = betterAuth({
 		google: {
 			clientId: env.GOOGLE_CLIENT_ID ?? "",
 			clientSecret: env.GOOGLE_CLIENT_SECRET ?? "",
+			redirectURI: `${env.NEXT_PUBLIC_APP_URL}/api/auth/callback/google`,
 		},
 	},
 	user: {

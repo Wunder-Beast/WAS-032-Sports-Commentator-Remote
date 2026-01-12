@@ -290,7 +290,7 @@ function HomeContent() {
 														className="absolute inset-0 size-full object-cover"
 													/>
 												</div>
-												<div className="-tracking-[0.12px] flex h-[29px] w-full items-center justify-center gap-1 bg-att-cobalt pt-1 pb-0.5 text-[12px] text-white">
+												<div className="flex h-[29px] w-full items-center justify-center gap-1 bg-att-cobalt pt-1 pb-0.5 text-[12px] text-white -tracking-[0.12px]">
 													<span>Play:</span>
 													<strong>
 														{play === 0 ? `Ohio State vs Maryland "BBQ"` : null}
@@ -425,7 +425,7 @@ function HomeContent() {
 											<VideoPlayerFullscreenButton />
 										</VideoPlayerControlBar>
 									</VideoPlayer>
-									<div className="-mt-2 -tracking-[0.12px] flex h-[29px] w-full items-center justify-center gap-1 bg-att-cobalt pt-1 pb-0.5 text-[12px] text-white">
+									<div className="-mt-2 flex h-[29px] w-full items-center justify-center gap-1 bg-att-cobalt pt-1 pb-0.5 text-[12px] text-white -tracking-[0.12px]">
 										<span>Play:</span>
 										<strong>
 											{play === 0 ? `Ohio State vs Maryland "BBQ"` : null}
@@ -447,7 +447,7 @@ function HomeContent() {
 						<SvgAtt className="w-[275px]" />
 					</div>
 					<div className="flex flex-grow flex-col items-center justify-center text-center">
-						<h1 className="-tracking-[6px] mb-16 max-w-3xl font-bold text-[120px] uppercase italic leading-[0.88]">
+						<h1 className="mb-16 max-w-3xl font-bold text-[120px] uppercase italic leading-[0.88] -tracking-[6px]">
 							This is a mobile only experience
 						</h1>
 						<p className="text-[26px]">
