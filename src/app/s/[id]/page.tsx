@@ -73,9 +73,7 @@ export default function SharePage() {
 						</div>
 					)}
 
-					{file.error && (
-						<div className="text-white">Failed to load video</div>
-					)}
+					{file.error && <div className="text-white">Failed to load video</div>}
 
 					{!file.isPending && file.data?.videoUrl && (
 						<video

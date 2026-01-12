@@ -14,7 +14,12 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "@/server/api/trpc";
-import { insertLeadSchema, leadFiles, leads } from "@/server/db/schema";
+import {
+	insertLeadSchema,
+	leadFiles,
+	leads,
+	type SelectLeadFile,
+} from "@/server/db/schema";
 
 export const leadRouter = createTRPCRouter({
 	getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -226,7 +231,7 @@ export const leadRouter = createTRPCRouter({
 				});
 			}
 
-			let file;
+			let file: SelectLeadFile | undefined;
 			if (input.fileId) {
 				file = await ctx.db.query.leadFiles.findFirst({
 					where: eq(leadFiles.id, input.fileId),

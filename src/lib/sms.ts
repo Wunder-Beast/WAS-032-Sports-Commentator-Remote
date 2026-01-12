@@ -57,6 +57,7 @@ export async function sendVideoShareSms(
 }
 
 export async function sendVideoRejectedSms(to: string): Promise<string> {
-	const body = `AT&T - Commentator 2025\n\nThank you for participating.\nUnfortunately, we were unable to process your video.\n\nWe appreciate your understanding.`;
+	const body =
+		"AT&T - Commentator 2025\n\nThank you for participating.\nUnfortunately, we were unable to process your video.\n\nWe appreciate your understanding.";
 	return sendSms({ to, body });
 }

@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	SlidePanel,
 	SliderContainer,
 	SliderProvider,
 	useFullSlider,
 } from "@/components/FullSlider";
+import {
+	VideoPlayer,
+	VideoPlayerContent,
+	VideoPlayerControlBar,
+	VideoPlayerFullscreenButton,
+	VideoPlayerMuteButton,
+	VideoPlayerPlayButton,
+	VideoPlayerTimeRange,
+} from "@/components/kibo-ui/video-player";
 import SvgAtt from "@/components/svg/att";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,57 +39,35 @@ function HomeContent() {
 	const [returningUserId, setReturningUserId] = useState<string | null>(null);
 	const [agePassed, setAgePassed] = useState(false);
 	const [play, setPlay] = useState(0);
-	const [isFullscreen, setIsFullscreen] = useState(false);
 	const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-	const finalVideoRef = useRef<HTMLVideoElement>(null);
 
-	// Track fullscreen state
+	// Lock to landscape when entering fullscreen
 	useEffect(() => {
-		const handleFullscreenChange = () => {
-			setIsFullscreen(!!document.fullscreenElement);
+		const orientation = screen.orientation as ScreenOrientation & {
+			lock?: (orientation: string) => Promise<void>;
+			unlock?: () => void;
 		};
-		document.addEventListener("fullscreenchange", handleFullscreenChange);
-		return () =>
-			document.removeEventListener("fullscreenchange", handleFullscreenChange);
-	}, []);
 
-	const enterFullscreen = useCallback(async () => {
-		const video = finalVideoRef.current;
-		if (!video) return;
-
-		try {
-			// Standard Fullscreen API
-			if (video.requestFullscreen) {
-				await video.requestFullscreen();
-				video.play();
-				// iOS Safari uses webkitEnterFullscreen on video elements
-			} else if (
-				(video as HTMLVideoElement & { webkitEnterFullscreen?: () => void })
-					.webkitEnterFullscreen
-			) {
-				(
-					video as HTMLVideoElement & { webkitEnterFullscreen: () => void }
-				).webkitEnterFullscreen();
-			}
-		} catch {
-			// Last resort fallback - just play inline
-			video.play();
-		}
-	}, []);
-
-	const exitFullscreen = useCallback(async () => {
-		const video = finalVideoRef.current;
-		if (!video) return;
-
-		video.pause();
-
-		try {
+		const handleFullscreenChange = async () => {
 			if (document.fullscreenElement) {
-				await document.exitFullscreen();
+				try {
+					await orientation.lock?.("landscape");
+				} catch {
+					// Orientation lock not supported or failed
+				}
+			} else {
+				try {
+					orientation.unlock?.();
+				} catch {
+					// Orientation unlock not supported
+				}
 			}
-		} catch {
-			// Ignore errors
-		}
+		};
+
+		document.addEventListener("fullscreenchange", handleFullscreenChange);
+		return () => {
+			document.removeEventListener("fullscreenchange", handleFullscreenChange);
+		};
 	}, []);
 
 	// Show mobile experience: touchscreen AND (portrait OR past slide 0)
@@ -91,30 +78,9 @@ function HomeContent() {
 	const finalSlideIndex = isReturning ? 3 : 4;
 	const isOnFinalSlide = currentSlide === finalSlideIndex;
 
-	// Show landscape overlay when past first slide, in landscape, not in fullscreen, and not on final slide
+	// Show landscape overlay when past first slide, in landscape, and not on final slide
 	const showLandscapeOverlay =
-		isMobile &&
-		currentSlide > 0 &&
-		isLandscape &&
-		!isFullscreen &&
-		!isOnFinalSlide;
-
-	// Handle fullscreen based on orientation on final slide
-	useEffect(() => {
-		if (!isOnFinalSlide) return;
-
-		if (isLandscape && !isFullscreen) {
-			enterFullscreen();
-		} else if (!isLandscape && isFullscreen) {
-			exitFullscreen();
-		}
-	}, [
-		isOnFinalSlide,
-		isLandscape,
-		isFullscreen,
-		enterFullscreen,
-		exitFullscreen,
-	]);
+		isMobile && currentSlide > 0 && isLandscape && !isOnFinalSlide;
 
 	const updatePlay = api.lead.updatePlay.useMutation();
 
@@ -320,6 +286,7 @@ function HomeContent() {
 														src={`/plays/play-${play + 1}-full.mp4`}
 														loop
 														playsInline
+														disableRemotePlayback
 														className="absolute inset-0 size-full object-cover"
 													/>
 												</div>
@@ -429,17 +396,36 @@ function HomeContent() {
 							</p>
 							<div className="mt-5 w-full">
 								<div className="relative w-full overflow-hidden rounded-[20px] border-2 border-white">
-									<div className="relative block aspect-16/9 w-full overflow-hidden">
-										<video
-											ref={finalVideoRef}
+									<VideoPlayer
+										className="group aspect-16/9 w-full [&:fullscreen]:bg-att-blue"
+										style={
+											{
+												"--media-control-background": "transparent",
+												"--media-control-hover-background": "transparent",
+											} as React.CSSProperties
+										}
+									>
+										<VideoPlayerContent
+											slot="media"
 											src={`/plays/play-${play + 1}-full.mp4`}
 											poster={`/plays/play-${play + 1}-poster.png`}
 											loop
 											playsInline
-											className="absolute inset-0 size-full object-cover"
+											disableRemotePlayback
+											className="size-full object-cover group-[:fullscreen]:object-contain"
 										/>
-									</div>
-									<div className="-tracking-[0.12px] flex h-[29px] w-full items-center justify-center gap-1 bg-att-cobalt pt-1 text-[12px] text-white">
+										<VideoPlayerPlayButton
+											slot="centered-chrome"
+											className="rounded-full bg-white p-4 [--media-icon-color:var(--att-blue)] group-[:not([mediapaused])]:hidden"
+										/>
+										<VideoPlayerControlBar className="h-7 items-center bg-white [--media-button-icon-height:16px] [--media-button-icon-width:16px] [--media-control-height:28px] [--media-icon-color:var(--att-blue)] [--media-range-bar-color:var(--att-blue)] [--media-range-thumb-background:var(--att-blue)] group-[[mediapaused]]:hidden">
+											<VideoPlayerPlayButton />
+											<VideoPlayerTimeRange />
+											<VideoPlayerMuteButton />
+											<VideoPlayerFullscreenButton />
+										</VideoPlayerControlBar>
+									</VideoPlayer>
+									<div className="-mt-2 -tracking-[0.12px] flex h-[29px] w-full items-center justify-center gap-1 bg-att-cobalt pt-1 pb-0.5 text-[12px] text-white">
 										<span>Play:</span>
 										<strong>
 											{play === 0 ? `Ohio State vs Maryland "BBQ"` : null}
@@ -450,13 +436,8 @@ function HomeContent() {
 								</div>
 							</div>
 							<p className="mt-5 px-5">
-								Rotate your phone for full screen and sound
+								Tap play to watch, or use fullscreen for an immersive view
 							</p>
-							<img
-								src="/rotate.png"
-								alt="Rotate to play"
-								className="mt-5 w-[100px]"
-							/>
 						</div>
 					</SlidePanel>
 				</SliderContainer>

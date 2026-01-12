@@ -1,7 +1,7 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { skipToken } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { MessageSquare, Play } from "lucide-react";
 import { useState } from "react";
@@ -106,7 +106,7 @@ function ViewVideoButton({ leadId }: { leadId: string }) {
 
 				{files.data && files.data.length > 0 && !selectedFileId && (
 					<div className="space-y-2">
-						<p className="text-sm text-muted-foreground">
+						<p className="text-muted-foreground text-sm">
 							Select a video to view:
 						</p>
 						<div className="grid gap-2">
@@ -179,9 +179,7 @@ function ForceSendSmsButton({
 	const sendSms = api.lead.forceSendSms.useMutation({
 		onSuccess: (data) => {
 			const message =
-				data.status === "approved"
-					? "Share link SMS sent"
-					: "Apology SMS sent";
+				data.status === "approved" ? "Share link SMS sent" : "Apology SMS sent";
 			toast.success(message);
 			utils.lead.getAll.invalidate();
 			setSelectedFileId(null);
@@ -223,7 +221,7 @@ function ForceSendSmsButton({
 
 				{moderatedFiles.length > 1 && (
 					<div className="space-y-2 py-2">
-						<p className="text-sm font-medium">Select video:</p>
+						<p className="font-medium text-sm">Select video:</p>
 						<div className="grid gap-2">
 							{moderatedFiles.map((file) => (
 								<Button
@@ -247,7 +245,7 @@ function ForceSendSmsButton({
 					</div>
 				)}
 
-				<p className="text-sm text-muted-foreground">
+				<p className="text-muted-foreground text-sm">
 					This is a billable action.
 					{fileToSend?.smsSentAt && (
 						<>

@@ -1,7 +1,7 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { keepPreviousData, skipToken } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { Check, MessageSquare, Play, X } from "lucide-react";
 import { useState } from "react";
@@ -218,9 +218,7 @@ function SendSmsButton({
 	const sendSms = api.lead.forceSendSms.useMutation({
 		onSuccess: (data) => {
 			const message =
-				data.status === "approved"
-					? "Share link SMS sent"
-					: "Apology SMS sent";
+				data.status === "approved" ? "Share link SMS sent" : "Apology SMS sent";
 			toast.success(message);
 			utils.leadFiles.getModerationQueue.invalidate();
 		},
@@ -261,9 +259,7 @@ function SendSmsButton({
 				</AlertDialogHeader>
 				<AlertDialogFooter>
 					<AlertDialogCancel>Cancel</AlertDialogCancel>
-					<AlertDialogAction
-						onClick={() => sendSms.mutate({ leadId, fileId })}
-					>
+					<AlertDialogAction onClick={() => sendSms.mutate({ leadId, fileId })}>
 						Send SMS
 					</AlertDialogAction>
 				</AlertDialogFooter>
@@ -371,7 +367,9 @@ const columns: ColumnDef<FileWithLead>[] = [
 ];
 
 export function ModerationQueue() {
-	const [statusFilter, setStatusFilter] = useState<ModerationStatus | undefined>("pending");
+	const [statusFilter, setStatusFilter] = useState<
+		ModerationStatus | undefined
+	>("pending");
 
 	const queue = api.leadFiles.getModerationQueue.useQuery(
 		{ status: statusFilter },
@@ -400,9 +398,11 @@ export function ModerationQueue() {
 	return (
 		<div className="w-full space-y-4 rounded-lg border bg-card p-5 text-card-foreground shadow-xs">
 			<div className="flex items-center justify-between">
-				<h2 className="text-lg font-semibold">Moderation Queue</h2>
+				<h2 className="font-semibold text-lg">Moderation Queue</h2>
 				{pendingCount.data && pendingCount.data.length > 0 && (
-					<Badge variant="destructive">{pendingCount.data.length} pending</Badge>
+					<Badge variant="destructive">
+						{pendingCount.data.length} pending
+					</Badge>
 				)}
 			</div>
 
