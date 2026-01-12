@@ -323,7 +323,7 @@ function HomeContent() {
 														className="absolute inset-0 size-full object-cover"
 													/>
 												</div>
-												<div className="-tracking-[0.12px] flex h-[29px] w-full items-center justify-center gap-1 bg-att-cobalt pt-1 text-[12px] text-white">
+												<div className="-tracking-[0.12px] flex h-[29px] w-full items-center justify-center gap-1 bg-att-cobalt pt-1 pb-0.5 text-[12px] text-white">
 													<span>Play:</span>
 													<strong>
 														{play === 0 ? `Ohio State vs Maryland "BBQ"` : null}
