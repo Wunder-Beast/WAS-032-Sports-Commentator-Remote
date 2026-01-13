@@ -52,12 +52,12 @@ export async function sendVideoShareSms(
 	to: string,
 	shareUrl: string,
 ): Promise<string> {
-	const body = `AT&T - Commentator 2025\n\nThank you for participating.\nCheck out your final video!\n\n${shareUrl}`;
+	const body = `You crushed it on-air with AT&T at CFP. That's a guaranteed share-worthy highlight!\n\nDownload your video and share your big moment in the link below.\n\n${shareUrl}`;
 	return sendSms({ to, body });
 }
 
 export async function sendVideoRejectedSms(to: string): Promise<string> {
 	const body =
-		"AT&T - Commentator 2025\n\nThank you for participating.\nUnfortunately, we were unable to process your video.\n\nWe appreciate your understanding.";
+		"Coming in a little too hot!\n\nYour recording was flagged by a moderator, come back to give Make the Call another try and let's play a clean game!";
 	return sendSms({ to, body });
 }
