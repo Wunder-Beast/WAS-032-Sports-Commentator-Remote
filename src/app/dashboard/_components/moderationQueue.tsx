@@ -81,7 +81,11 @@ function VideoPreviewButton({
 	};
 
 	const handleReject = () => {
-		moderate.mutate({ id: fileId, status: "rejected", notes: notes || undefined });
+		moderate.mutate({
+			id: fileId,
+			status: "rejected",
+			notes: notes || undefined,
+		});
 	};
 
 	return (
@@ -120,7 +124,9 @@ function VideoPreviewButton({
 				{showModerationActions && (
 					<div className="space-y-4 border-t pt-4">
 						<div>
-							<Label htmlFor="rejection-notes">Rejection Notes (optional)</Label>
+							<Label htmlFor="rejection-notes">
+								Rejection Notes (optional)
+							</Label>
 							<Input
 								id="rejection-notes"
 								placeholder="Reason for rejection..."

@@ -1,4 +1,4 @@
-import { desc, or, sql } from "drizzle-orm";
+import { asc, desc, or, sql } from "drizzle-orm";
 import { env } from "@/env";
 import { ilike } from "@/lib/utils";
 import { db } from "@/server/db";
@@ -41,7 +41,7 @@ const handler = async (req: Request) => {
 					ilike(leads.lastName, sql.placeholder("query")),
 					ilike(leads.phone, sql.placeholder("query")),
 				),
-				orderBy: desc(leads.createdAt),
+				orderBy: [asc(leads.firstName), asc(leads.lastName)],
 			})
 			.prepare();
 
