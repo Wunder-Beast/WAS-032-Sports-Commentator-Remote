@@ -3,7 +3,7 @@
 import { skipToken } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { MessageSquare, Play } from "lucide-react";
+import { ExternalLink, MessageSquare, Play } from "lucide-react";
 import { useState } from "react";
 import CsvDownloadButton from "react-json-to-csv";
 import { toast } from "sonner";
@@ -281,6 +281,10 @@ function ActionsCell({ lead }: { lead: LeadWithFiles }) {
 		return <span className="text-muted-foreground text-sm">No videos</span>;
 	}
 
+	const approvedFile = lead.files.find(
+		(f) => f.moderationStatus === "approved",
+	);
+
 	return (
 		<div className="flex gap-2">
 			<ViewVideoButton leadId={lead.id} />
@@ -289,6 +293,18 @@ function ActionsCell({ lead }: { lead: LeadWithFiles }) {
 				phone={lead.phone}
 				files={lead.files}
 			/>
+			{approvedFile && (
+				<Button variant="outline" size="sm" asChild>
+					<a
+						href={`/s/${approvedFile.id}`}
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						<ExternalLink className="mr-1 h-4 w-4" />
+						Share
+					</a>
+				</Button>
+			)}
 		</div>
 	);
 }

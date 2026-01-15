@@ -176,24 +176,25 @@ export default function SharePage() {
 						</div>
 					)}
 				</div>
-				{file.data?.downloadUrl && (
-					<div className="mt-10 space-y-4 text-center">
-						<Button variant="attOutline" size="attOutline" asChild>
-							<a href={file.data.downloadUrl} download>
-								Download
-							</a>
+				<div className="mt-10 space-y-4 text-center">
+					{canShare ? (
+						<Button
+							variant="attOutline"
+							size="attOutline"
+							onClick={handleShare}
+						>
+							Share
 						</Button>
-						{canShare && (
-							<Button
-								variant="attOutline"
-								size="attOutline"
-								onClick={handleShare}
-							>
-								Share
+					) : (
+						file.data?.downloadUrl && (
+							<Button variant="attOutline" size="attOutline" asChild>
+								<a href={file.data.downloadUrl} download>
+									Download
+								</a>
 							</Button>
-						)}
-					</div>
-				)}
+						)
+					)}
+				</div>
 			</div>
 		</main>
 	);
