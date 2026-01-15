@@ -146,10 +146,16 @@ export const leadFilesRouter = createTRPCRouter({
 
 			try {
 				const url = await generateVideoSignedUrl(file.remoteFilePath, 3600);
+				const downloadUrl = await generateVideoSignedUrl(
+					file.remoteFilePath,
+					3600,
+					true,
+				);
 				return {
 					id: file.id,
 					moderationStatus: file.moderationStatus,
 					videoUrl: url,
+					downloadUrl: downloadUrl,
 				};
 			} catch (error) {
 				if (error instanceof S3FileNotFoundError) {
