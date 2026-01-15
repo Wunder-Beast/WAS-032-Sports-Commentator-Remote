@@ -53,32 +53,29 @@ export default function SharePage() {
 		file.refetch();
 	};
 
-	// Fetch video blob for sharing
+	// Fetch video blob for sharing (only if browser supports file sharing)
 	useEffect(() => {
 		if (!file.data?.videoUrl) return;
+		if (typeof navigator === "undefined" || !navigator.canShare) return;
+
 		fetch(file.data.videoUrl)
 			.then((res) => res.blob())
 			.then((blob) => {
 				const videoFile = new File([blob], `att-replay-${params.id}.mp4`, {
 					type: "video/mp4",
 				});
-				setVideoFile(videoFile);
+				// Check if this file can actually be shared
+				try {
+					if (navigator.canShare({ files: [videoFile] })) {
+						setVideoFile(videoFile);
+						setCanShare(true);
+					}
+				} catch {
+					console.error("Cannot share this file type");
+				}
 			})
 			.catch((err) => console.error("Failed to fetch video blob:", err));
 	}, [file.data?.videoUrl, params.id]);
-
-	// Check if file sharing is supported once we have the file
-	useEffect(() => {
-		if (!videoFile) {
-			setCanShare(false);
-			return;
-		}
-		try {
-			setCanShare(navigator.canShare?.({ files: [videoFile] }) ?? false);
-		} catch {
-			setCanShare(false);
-		}
-	}, [videoFile]);
 
 	const handlePlay = () => {
 		if (videoRef.current) {
