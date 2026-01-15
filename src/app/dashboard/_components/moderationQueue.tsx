@@ -44,12 +44,45 @@ type FileWithLead = SelectLeadFile & {
 	};
 };
 
-function VideoPreviewButton({ fileId }: { fileId: string }) {
+function VideoPreviewButton({
+	fileId,
+	showModerationActions,
+	onModerate,
+}: {
+	fileId: string;
+	showModerationActions?: boolean;
+	onModerate?: () => void;
+}) {
 	const [open, setOpen] = useState(false);
+	const [notes, setNotes] = useState("");
 
 	const videoUrl = api.leadFiles.getVideoUrl.useQuery(
 		open ? { id: fileId } : skipToken,
 	);
+
+	const utils = api.useUtils();
+	const moderate = api.leadFiles.moderate.useMutation({
+		onSuccess: (_, variables) => {
+			const message =
+				variables.status === "approved" ? "Video approved" : "Video rejected";
+			toast.success(message);
+			utils.leadFiles.getModerationQueue.invalidate();
+			setNotes("");
+			setOpen(false);
+			onModerate?.();
+		},
+		onError: (error) => {
+			toast.error(`Failed to moderate: ${error.message}`);
+		},
+	});
+
+	const handleApprove = () => {
+		moderate.mutate({ id: fileId, status: "approved" });
+	};
+
+	const handleReject = () => {
+		moderate.mutate({ id: fileId, status: "rejected", notes: notes || undefined });
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -83,121 +116,42 @@ function VideoPreviewButton({ fileId }: { fileId: string }) {
 						preload="auto"
 					/>
 				)}
+
+				{showModerationActions && (
+					<div className="space-y-4 border-t pt-4">
+						<div>
+							<Label htmlFor="rejection-notes">Rejection Notes (optional)</Label>
+							<Input
+								id="rejection-notes"
+								placeholder="Reason for rejection..."
+								value={notes}
+								onChange={(e) => setNotes(e.target.value)}
+								className="mt-2"
+							/>
+						</div>
+						<div className="flex justify-end gap-2">
+							<Button
+								variant="outline"
+								className="text-red-600 hover:bg-red-50 hover:text-red-700"
+								onClick={handleReject}
+								disabled={moderate.isPending}
+							>
+								<X className="mr-1 h-4 w-4" />
+								{moderate.isPending ? "..." : "Reject"}
+							</Button>
+							<Button
+								className="bg-green-600 hover:bg-green-700"
+								onClick={handleApprove}
+								disabled={moderate.isPending}
+							>
+								<Check className="mr-1 h-4 w-4" />
+								{moderate.isPending ? "..." : "Approve"}
+							</Button>
+						</div>
+					</div>
+				)}
 			</DialogContent>
 		</Dialog>
-	);
-}
-
-function ApproveButton({ fileId }: { fileId: string }) {
-	const utils = api.useUtils();
-	const moderate = api.leadFiles.moderate.useMutation({
-		onSuccess: () => {
-			toast.success("Video approved");
-			utils.leadFiles.getModerationQueue.invalidate();
-		},
-		onError: (error) => {
-			toast.error(`Failed to approve: ${error.message}`);
-		},
-	});
-
-	return (
-		<AlertDialog>
-			<AlertDialogTrigger asChild>
-				<Button
-					variant="outline"
-					size="sm"
-					className="text-green-600 hover:bg-green-50 hover:text-green-700"
-					disabled={moderate.isPending}
-				>
-					<Check className="mr-1 h-4 w-4" />
-					{moderate.isPending ? "..." : "Approve"}
-				</Button>
-			</AlertDialogTrigger>
-			<AlertDialogContent>
-				<AlertDialogHeader>
-					<AlertDialogTitle>Approve this video?</AlertDialogTitle>
-					<AlertDialogDescription>
-						This will allow the video to be publicly viewable and enable sending
-						the share link via SMS.
-					</AlertDialogDescription>
-				</AlertDialogHeader>
-				<AlertDialogFooter>
-					<AlertDialogCancel>Cancel</AlertDialogCancel>
-					<AlertDialogAction
-						onClick={() => moderate.mutate({ id: fileId, status: "approved" })}
-					>
-						Approve
-					</AlertDialogAction>
-				</AlertDialogFooter>
-			</AlertDialogContent>
-		</AlertDialog>
-	);
-}
-
-function RejectButton({ fileId }: { fileId: string }) {
-	const [notes, setNotes] = useState("");
-	const utils = api.useUtils();
-	const moderate = api.leadFiles.moderate.useMutation({
-		onSuccess: () => {
-			toast.success("Video rejected");
-			utils.leadFiles.getModerationQueue.invalidate();
-			setNotes("");
-		},
-		onError: (error) => {
-			toast.error(`Failed to reject: ${error.message}`);
-		},
-	});
-
-	return (
-		<AlertDialog>
-			<AlertDialogTrigger asChild>
-				<Button
-					variant="outline"
-					size="sm"
-					className="text-red-600 hover:bg-red-50 hover:text-red-700"
-					disabled={moderate.isPending}
-				>
-					<X className="mr-1 h-4 w-4" />
-					{moderate.isPending ? "..." : "Reject"}
-				</Button>
-			</AlertDialogTrigger>
-			<AlertDialogContent>
-				<AlertDialogHeader>
-					<AlertDialogTitle>Reject this video?</AlertDialogTitle>
-					<AlertDialogDescription>
-						The participant will not be able to view this video. They will
-						receive an apologetic SMS instead of a share link.
-					</AlertDialogDescription>
-				</AlertDialogHeader>
-				<div className="py-4">
-					<Label htmlFor="notes">Notes (optional)</Label>
-					<Input
-						id="notes"
-						placeholder="Reason for rejection..."
-						value={notes}
-						onChange={(e) => setNotes(e.target.value)}
-						className="mt-2"
-					/>
-				</div>
-				<AlertDialogFooter>
-					<AlertDialogCancel onClick={() => setNotes("")}>
-						Cancel
-					</AlertDialogCancel>
-					<AlertDialogAction
-						className="bg-red-600 hover:bg-red-700"
-						onClick={() =>
-							moderate.mutate({
-								id: fileId,
-								status: "rejected",
-								notes: notes || undefined,
-							})
-						}
-					>
-						Reject
-					</AlertDialogAction>
-				</AlertDialogFooter>
-			</AlertDialogContent>
-		</AlertDialog>
 	);
 }
 
@@ -294,13 +248,10 @@ function StatusBadge({ status }: { status: ModerationStatus }) {
 function ActionsCell({ file }: { file: FileWithLead }) {
 	return (
 		<div className="flex flex-wrap gap-2">
-			<VideoPreviewButton fileId={file.id} />
-			{file.moderationStatus === "pending" && (
-				<>
-					<ApproveButton fileId={file.id} />
-					<RejectButton fileId={file.id} />
-				</>
-			)}
+			<VideoPreviewButton
+				fileId={file.id}
+				showModerationActions={file.moderationStatus === "pending"}
+			/>
 			{file.moderationStatus !== "pending" && (
 				<SendSmsButton
 					fileId={file.id}
