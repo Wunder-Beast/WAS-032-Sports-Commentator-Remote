@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import SvgAtt from "@/components/svg/att";
 import { Button } from "@/components/ui/button";
@@ -38,11 +38,13 @@ export default function SharePage() {
 		}
 	}, [file.error, router]);
 
-	// Fetch blob for sharing - called after video can play (data should be cached)
-	const fetchBlobForSharing = useCallback(() => {
+	// Fetch blob for sharing as soon as we have the URL and know browser can share
+	useEffect(() => {
 		if (!file.data?.videoUrl || videoFile || !browserCanShare) return;
 
-		fetch(file.data.videoUrl)
+		const controller = new AbortController();
+
+		fetch(file.data.videoUrl, { signal: controller.signal })
 			.then((res) => res.blob())
 			.then((blob) => {
 				const newFile = new File([blob], `att-replay-${params.id}.mp4`, {
@@ -50,20 +52,21 @@ export default function SharePage() {
 				});
 				setVideoFile(newFile);
 			})
-			.catch((err) => console.error("Failed to fetch video blob:", err));
+			.catch((err) => {
+				if (err.name !== "AbortError") {
+					console.error("Failed to fetch video blob:", err);
+				}
+			});
+
+		return () => controller.abort();
 	}, [file.data?.videoUrl, params.id, videoFile, browserCanShare]);
 
 	// Handle video load errors by refreshing the signed URL
 	const handleVideoError = () => {
 		console.log("Video failed to load, refreshing signed URL");
 		setLoaded(false);
+		setVideoFile(null);
 		file.refetch();
-	};
-
-	// When video can play, fetch the blob (should hit cache)
-	const handleCanPlay = () => {
-		setLoaded(true);
-		fetchBlobForSharing();
 	};
 
 	const handlePlay = () => {
@@ -137,7 +140,7 @@ export default function SharePage() {
 								loop
 								playsInline
 								controls={isPlaying}
-								onCanPlay={handleCanPlay}
+								onCanPlay={() => setLoaded(true)}
 								onError={handleVideoError}
 								onPause={() => setIsPlaying(false)}
 								onPlay={() => setIsPlaying(true)}
