@@ -38,13 +38,11 @@ export default function SharePage() {
 		}
 	}, [file.error, router]);
 
-	// Fetch blob for sharing as soon as we have the URL and know browser can share
+	// Fetch blob for sharing - only after video is loaded (so it hits browser cache)
 	useEffect(() => {
-		if (!file.data?.videoUrl || videoFile || !browserCanShare) return;
+		if (!loaded || !file.data?.videoUrl || videoFile || !browserCanShare) return;
 
-		const controller = new AbortController();
-
-		fetch(file.data.videoUrl, { signal: controller.signal })
+		fetch(file.data.videoUrl)
 			.then((res) => res.blob())
 			.then((blob) => {
 				const newFile = new File([blob], `att-replay-${params.id}.mp4`, {
@@ -52,14 +50,8 @@ export default function SharePage() {
 				});
 				setVideoFile(newFile);
 			})
-			.catch((err) => {
-				if (err.name !== "AbortError") {
-					console.error("Failed to fetch video blob:", err);
-				}
-			});
-
-		return () => controller.abort();
-	}, [file.data?.videoUrl, params.id, videoFile, browserCanShare]);
+			.catch((err) => console.error("Failed to fetch video blob:", err));
+	}, [loaded, file.data?.videoUrl, params.id, videoFile, browserCanShare]);
 
 	// Handle video load errors by refreshing the signed URL
 	const handleVideoError = () => {
