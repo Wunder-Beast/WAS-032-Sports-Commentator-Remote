@@ -132,9 +132,9 @@ export function AdminSidebar() {
 		}
 
 		if (stage === "production") {
-			window.location.href = "https://yourproject.com/dashboard";
+			window.location.href = "https://callthegamecfp.com/dashboard";
 		} else if (stage === "staging") {
-			window.location.href = "https://staging.yourproject.com/dashboard";
+			window.location.href = "https://staging.callthegamecfp.com/dashboard";
 		} else if (stage === "development") {
 			window.location.href = "http://localhost:3000/dashboard";
 		}

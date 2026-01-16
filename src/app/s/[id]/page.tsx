@@ -15,6 +15,7 @@ export default function SharePage() {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [videoFile, setVideoFile] = useState<File | null>(null);
 	const [browserCanShare, setBrowserCanShare] = useState<boolean | null>(null);
+	const [waitingToShare, setWaitingToShare] = useState(false);
 
 	// Check if browser supports file sharing on mount
 	useEffect(() => {
@@ -40,7 +41,8 @@ export default function SharePage() {
 
 	// Fetch blob for sharing - only after video is loaded (so it hits browser cache)
 	useEffect(() => {
-		if (!loaded || !file.data?.videoUrl || videoFile || !browserCanShare) return;
+		if (!loaded || !file.data?.videoUrl || videoFile || !browserCanShare)
+			return;
 
 		fetch(file.data.videoUrl)
 			.then((res) => res.blob())
@@ -69,7 +71,10 @@ export default function SharePage() {
 	};
 
 	const handleShare = async () => {
-		if (!videoFile) return;
+		if (!videoFile) {
+			setWaitingToShare(true);
+			return;
+		}
 		try {
 			await navigator.share({
 				title: "Check out my replay!",
@@ -81,6 +86,23 @@ export default function SharePage() {
 			}
 		}
 	};
+
+	// Auto-trigger share when blob is ready and user is waiting
+	useEffect(() => {
+		if (!waitingToShare || !videoFile) return;
+
+		setWaitingToShare(false);
+		navigator
+			.share({
+				title: "Check out my replay!",
+				files: [videoFile],
+			})
+			.catch((err) => {
+				if ((err as Error).name !== "AbortError") {
+					console.error("Share failed:", err);
+				}
+			});
+	}, [waitingToShare, videoFile]);
 
 	// Video unavailable (rejected or pending)
 	if (file.data && file.data.moderationStatus !== "approved") {
@@ -165,16 +187,16 @@ export default function SharePage() {
 						<Button
 							variant="attOutline"
 							size="attOutline"
-							onClick={handleShare}
-							disabled={!videoFile}
+							onClick={() => handleShare()}
+							disabled={waitingToShare}
 						>
-							{videoFile ? (
-								"Share"
-							) : (
+							{waitingToShare ? (
 								<>
 									Preparing Video
 									<LoadingSpinner className="ml-2 h-4 w-4" />
 								</>
+							) : (
+								"Share"
 							)}
 						</Button>
 					) : (
