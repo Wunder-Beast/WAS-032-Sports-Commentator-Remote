@@ -1,7 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { env } from "@/env";
 import { generateVideoSignedUrl, S3FileNotFoundError } from "@/lib/s3";
+import {
+	isTwilioConfigured,
+	sendVideoRejectedSms,
+	sendVideoShareSms,
+} from "@/lib/sms";
 import {
 	createTRPCRouter,
 	protectedProcedure,
@@ -92,6 +98,7 @@ export const leadFilesRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const file = await ctx.db.query.leadFiles.findFirst({
 				where: eq(leadFiles.id, input.id),
+				with: { lead: true },
 			});
 
 			if (!file) {
@@ -111,6 +118,36 @@ export const leadFilesRouter = createTRPCRouter({
 				})
 				.where(eq(leadFiles.id, input.id))
 				.returning();
+
+			if (env.ENABLE_SMS && isTwilioConfigured() && file.lead?.phone) {
+				try {
+					if (input.status === "approved") {
+						if (env.SMS_BASE_URL) {
+							const baseUrl = env.SMS_BASE_URL.replace(/\/$/, "");
+							const shareUrl = `${baseUrl}/s/${file.id}`;
+							await sendVideoShareSms(file.lead.phone, shareUrl);
+							await ctx.db
+								.update(leadFiles)
+								.set({ smsSentAt: new Date(), smsError: null })
+								.where(eq(leadFiles.id, input.id));
+						}
+					} else {
+						await sendVideoRejectedSms(file.lead.phone);
+						await ctx.db
+							.update(leadFiles)
+							.set({ smsSentAt: new Date(), smsError: null })
+							.where(eq(leadFiles.id, input.id));
+					}
+				} catch (error) {
+					console.error("[moderate] Failed to auto-send SMS:", error);
+					const errorMessage =
+						error instanceof Error ? error.message : "Unknown error";
+					await ctx.db
+						.update(leadFiles)
+						.set({ smsError: errorMessage })
+						.where(eq(leadFiles.id, input.id));
+				}
+			}
 
 			return updated[0];
 		}),

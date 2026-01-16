@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import SvgAtt from "@/components/svg/att";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
@@ -12,6 +12,7 @@ export default function SharePage() {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const [loaded, setLoaded] = useState(false);
 	const [isPlaying, setIsPlaying] = useState(false);
+	const [blobUrl, setBlobUrl] = useState<string | null>(null);
 	const [videoFile, setVideoFile] = useState<File | null>(null);
 	const [canShare, setCanShare] = useState(false);
 
@@ -27,55 +28,48 @@ export default function SharePage() {
 		}
 	}, [file.error, router]);
 
-	// Helper function to check if we should refresh
-	const shouldRefresh = useCallback((): boolean => {
-		if (!file.dataUpdatedAt) return false;
-		const timeSinceUpdate = Date.now() - file.dataUpdatedAt;
-		// Refresh if data is older than 50 minutes (URL expires in 1 hour)
-		return timeSinceUpdate > 50 * 60 * 1000;
-	}, [file.dataUpdatedAt]);
-
-	// Auto-refresh on window focus if URL might be expiring
-	useEffect(() => {
-		const handleFocus = () => {
-			if (file.data?.videoUrl && shouldRefresh()) {
-				file.refetch();
-			}
-		};
-
-		window.addEventListener("focus", handleFocus);
-		return () => window.removeEventListener("focus", handleFocus);
-	}, [file.data, file.refetch, shouldRefresh]);
-
-	// Handle video load errors by refreshing the signed URL
-	const handleVideoError = () => {
-		console.log("Video failed to load, refreshing signed URL");
-		file.refetch();
-	};
-
-	// Fetch video blob for sharing (only if browser supports file sharing)
+	// Fetch video blob once - use for both playback and sharing
 	useEffect(() => {
 		if (!file.data?.videoUrl) return;
-		if (typeof navigator === "undefined" || !navigator.canShare) return;
+
+		let objectUrl: string | null = null;
 
 		fetch(file.data.videoUrl)
 			.then((res) => res.blob())
 			.then((blob) => {
+				objectUrl = URL.createObjectURL(blob);
+				setBlobUrl(objectUrl);
+
 				const videoFile = new File([blob], `att-replay-${params.id}.mp4`, {
 					type: "video/mp4",
 				});
-				// Check if this file can actually be shared
+				setVideoFile(videoFile);
+
+				// Check if browser supports sharing this file
 				try {
-					if (navigator.canShare({ files: [videoFile] })) {
-						setVideoFile(videoFile);
+					if (navigator.canShare?.({ files: [videoFile] })) {
 						setCanShare(true);
 					}
 				} catch {
-					console.error("Cannot share this file type");
+					// Browser doesn't support file sharing
 				}
 			})
-			.catch((err) => console.error("Failed to fetch video blob:", err));
+			.catch((err) => console.error("Failed to fetch video:", err));
+
+		return () => {
+			if (objectUrl) {
+				URL.revokeObjectURL(objectUrl);
+			}
+		};
 	}, [file.data?.videoUrl, params.id]);
+
+	// Handle video load errors by refreshing the signed URL
+	const handleVideoError = () => {
+		console.log("Video failed to load, refreshing signed URL");
+		setBlobUrl(null);
+		setLoaded(false);
+		file.refetch();
+	};
 
 	const handlePlay = () => {
 		if (videoRef.current) {
@@ -127,8 +121,8 @@ export default function SharePage() {
 					<p>Check out your replay below</p>
 				</div>
 				<div className="relative mx-auto flex w-full max-w-[70vw] flex-col items-center justify-center">
-					{file.isPending && (
-						<div className="flex items-center justify-center">
+					{(file.isPending || (!blobUrl && !file.error)) && (
+						<div className="flex aspect-[9/16] w-full items-center justify-center">
 							<div className="h-8 w-8 animate-spin rounded-full border-white border-b-2" />
 						</div>
 					)}
@@ -139,7 +133,7 @@ export default function SharePage() {
 						</div>
 					)}
 
-					{!file.isPending && file.data?.videoUrl && (
+					{blobUrl && (
 						<div className="relative aspect-[9/16] w-full overflow-hidden rounded-[20px] border border-white bg-black">
 							<video
 								ref={videoRef}
@@ -153,7 +147,7 @@ export default function SharePage() {
 								onPause={() => setIsPlaying(false)}
 								onPlay={() => setIsPlaying(true)}
 							>
-								<source src={`${file.data.videoUrl}#t=0.1`} type="video/mp4" />
+								<source src={`${blobUrl}#t=0.1`} type="video/mp4" />
 								Your browser does not support the video tag.
 							</video>
 							{loaded && !isPlaying && (

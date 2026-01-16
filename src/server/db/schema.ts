@@ -64,6 +64,7 @@ export const leadFiles = createTable("lead_files", {
 	moderatedBy: text("moderated_by").references(() => user.id),
 	moderationNotes: text("moderation_notes"),
 	smsSentAt: integer("sms_sent_at", { mode: "timestamp" }),
+	smsError: text("sms_error"),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.default(sql`(unixepoch())`)
 		.notNull(),

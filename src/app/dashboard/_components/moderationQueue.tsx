@@ -3,20 +3,9 @@
 import { keepPreviousData, skipToken } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { Check, MessageSquare, Play, X } from "lucide-react";
+import { Check, Play, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -29,6 +18,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { SelectLeadFile } from "@/server/db/schema";
 import { api } from "@/trpc/react";
 
@@ -161,73 +155,6 @@ function VideoPreviewButton({
 	);
 }
 
-function SendSmsButton({
-	fileId,
-	leadId,
-	phone,
-	status,
-	smsSent,
-}: {
-	fileId: string;
-	leadId: string;
-	phone: string;
-	status: ModerationStatus;
-	smsSent: boolean;
-}) {
-	const utils = api.useUtils();
-	const sendSms = api.lead.forceSendSms.useMutation({
-		onSuccess: (data) => {
-			const message =
-				data.status === "approved" ? "Share link SMS sent" : "Apology SMS sent";
-			toast.success(message);
-			utils.leadFiles.getModerationQueue.invalidate();
-		},
-		onError: (error) => {
-			toast.error(`Failed to send SMS: ${error.message}`);
-		},
-	});
-
-	const buttonText =
-		status === "approved" ? "Send Video Link" : "Send Apology SMS";
-	const description =
-		status === "approved"
-			? `This will send a text message to ${phone} with a link to their video.`
-			: `This will send an apologetic message to ${phone} explaining their video couldn't be processed.`;
-
-	return (
-		<AlertDialog>
-			<AlertDialogTrigger asChild>
-				<Button
-					variant="outline"
-					size="sm"
-					disabled={sendSms.isPending}
-					className={smsSent ? "opacity-50" : ""}
-				>
-					<MessageSquare className="mr-1 h-4 w-4" />
-					{sendSms.isPending ? "Sending..." : smsSent ? "Resend" : buttonText}
-				</Button>
-			</AlertDialogTrigger>
-			<AlertDialogContent>
-				<AlertDialogHeader>
-					<AlertDialogTitle>
-						{smsSent ? "Resend SMS?" : "Send SMS?"}
-					</AlertDialogTitle>
-					<AlertDialogDescription>
-						{description} This is a billable action.
-						{smsSent && " An SMS has already been sent for this video."}
-					</AlertDialogDescription>
-				</AlertDialogHeader>
-				<AlertDialogFooter>
-					<AlertDialogCancel>Cancel</AlertDialogCancel>
-					<AlertDialogAction onClick={() => sendSms.mutate({ leadId, fileId })}>
-						Send SMS
-					</AlertDialogAction>
-				</AlertDialogFooter>
-			</AlertDialogContent>
-		</AlertDialog>
-	);
-}
-
 function StatusBadge({ status }: { status: ModerationStatus }) {
 	switch (status) {
 		case "pending":
@@ -253,21 +180,10 @@ function StatusBadge({ status }: { status: ModerationStatus }) {
 
 function ActionsCell({ file }: { file: FileWithLead }) {
 	return (
-		<div className="flex flex-wrap gap-2">
-			<VideoPreviewButton
-				fileId={file.id}
-				showModerationActions={file.moderationStatus === "pending"}
-			/>
-			{file.moderationStatus !== "pending" && (
-				<SendSmsButton
-					fileId={file.id}
-					leadId={file.leadId}
-					phone={file.lead.phone}
-					status={file.moderationStatus}
-					smsSent={!!file.smsSentAt}
-				/>
-			)}
-		</div>
+		<VideoPreviewButton
+			fileId={file.id}
+			showModerationActions={file.moderationStatus === "pending"}
+		/>
 	);
 }
 
@@ -309,9 +225,22 @@ const columns: ColumnDef<FileWithLead>[] = [
 	},
 	{
 		accessorKey: "smsSentAt",
-		header: "SMS Sent",
+		header: "SMS",
 		cell: ({ row }) => {
 			const date: Date | null = row.getValue("smsSentAt");
+			const error = row.original.smsError;
+			if (error) {
+				return (
+					<Tooltip>
+						<TooltipTrigger>
+							<Badge variant="destructive">Failed</Badge>
+						</TooltipTrigger>
+						<TooltipContent className="max-w-xs">
+							<p>{error}</p>
+						</TooltipContent>
+					</Tooltip>
+				);
+			}
 			if (!date) return <span className="text-muted-foreground">-</span>;
 			return format(date, "MMM d, pp");
 		},
