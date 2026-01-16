@@ -218,8 +218,8 @@ export function AdminSidebar() {
 						<SidebarMenu>
 							{mainNavItems
 								.filter((item) => {
-									// Show Users and Moderation links to admins and super admins
-									if (item.title === "Users" || item.title === "Moderation") {
+									// Show Users link only to admins and super admins
+									if (item.title === "Users") {
 										return (
 											session?.user?.role === "admin" ||
 											isSuperAdmin(session?.user?.role)
