@@ -16,6 +16,7 @@ export default function SharePage() {
 	const [videoFile, setVideoFile] = useState<File | null>(null);
 	const [browserCanShare, setBrowserCanShare] = useState<boolean | null>(null);
 	const [waitingToShare, setWaitingToShare] = useState(false);
+	const waitingToShareRef = useRef(false);
 
 	// Check if browser supports file sharing on mount
 	useEffect(() => {
@@ -51,6 +52,19 @@ export default function SharePage() {
 					type: "video/mp4",
 				});
 				setVideoFile(newFile);
+
+				// If user was waiting to share, trigger it now
+				if (waitingToShareRef.current) {
+					waitingToShareRef.current = false;
+					setWaitingToShare(false);
+					navigator
+						.share({ title: "Check out my replay!", files: [newFile] })
+						.catch((err) => {
+							if ((err as Error).name !== "AbortError") {
+								console.error("Share failed:", err);
+							}
+						});
+				}
 			})
 			.catch((err) => console.error("Failed to fetch video blob:", err));
 	}, [loaded, file.data?.videoUrl, params.id, videoFile, browserCanShare]);
@@ -72,6 +86,7 @@ export default function SharePage() {
 
 	const handleShare = async () => {
 		if (!videoFile) {
+			waitingToShareRef.current = true;
 			setWaitingToShare(true);
 			return;
 		}
@@ -86,23 +101,6 @@ export default function SharePage() {
 			}
 		}
 	};
-
-	// Auto-trigger share when blob is ready and user is waiting
-	useEffect(() => {
-		if (!waitingToShare || !videoFile) return;
-
-		setWaitingToShare(false);
-		navigator
-			.share({
-				title: "Check out my replay!",
-				files: [videoFile],
-			})
-			.catch((err) => {
-				if ((err as Error).name !== "AbortError") {
-					console.error("Share failed:", err);
-				}
-			});
-	}, [waitingToShare, videoFile]);
 
 	// Video unavailable (rejected or pending)
 	if (file.data && file.data.moderationStatus !== "approved") {
