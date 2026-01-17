@@ -29,9 +29,9 @@ export const statsRouter = createTRPCRouter({
 		return await ctx.db
 			.select({
 				date: sql<string>`date(datetime(created_at, 'unixepoch')) AS date`,
-				bbq: sql<number>`cast(count(play = 0 OR NULL) as int)`,
-				jumpPass: sql<number>`cast(count(play = 1 OR NULL) as int)`,
-				theHero: sql<number>`cast(count(play = 2 OR NULL) as int)`,
+				bbq: sql<number>`cast(count(play = 1 OR NULL) as int)`,
+				jumpPass: sql<number>`cast(count(play = 2 OR NULL) as int)`,
+				theHero: sql<number>`cast(count(play = 3 OR NULL) as int)`,
 			})
 			.from(leadFiles)
 			.orderBy(asc(sql`date`))
